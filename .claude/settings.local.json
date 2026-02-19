@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod tidy:*)",
+      "Bash(go build:*)",
+      "Bash(npm install:*)",
+      "Bash(npx svelte-kit sync:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}

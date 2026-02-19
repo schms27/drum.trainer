@@ -1,0 +1,1 @@
+import{a as o}from"./Cg2SOeN5.js";import{H as n}from"./BUApaBEI.js";async function i(s){return o("/sessions",{method:"POST",body:JSON.stringify(s)})}async function a(s){return o(`/sessions/${s}`)}function c(s,r){throw new n(s,r)}export{c as e,a as g,i as s};

@@ -1,0 +1,9 @@
+{
+	"/": [],
+	"/results/[sessionId]": [
+		"src/routes/results/[sessionId]/+page.ts"
+	],
+	"/session/[trackId]": [
+		"src/routes/session/[trackId]/+page.ts"
+	]
+}
