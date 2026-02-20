@@ -1,0 +1,35 @@
+# Usage:
+#   CODEBERG_USER=yourname docker compose up -d
+#
+# Or create a .env file in this directory containing:
+#   CODEBERG_USER=yourname
+
+services:
+  backend:
+    image: codeberg.org/${CODEBERG_USER}/drum-trainer-backend:latest
+    restart: unless-stopped
+    volumes:
+      - data:/data
+
+  frontend:
+    image: codeberg.org/${CODEBERG_USER}/drum-trainer-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      # Must match the URL you open in the browser (SvelteKit CSRF protection).
+      ORIGIN: http://localhost
+
+  proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  data:
