@@ -13,6 +13,7 @@ export interface Track {
 	duration_ms: number;
 	note_count: number;
 	ppq: number;
+	bpm: number;
 	created_at: string;
 }
 

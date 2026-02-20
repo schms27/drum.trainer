@@ -65,6 +65,7 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 		DurationMs: parsed.DurationMs,
 		NoteCount:  len(parsed.Notes),
 		PPQ:        parsed.PPQ,
+		BPM:        parsed.BPM,
 	}
 
 	trackID, err := dbpkg.InsertTrack(h.db, track, parsed.Notes)

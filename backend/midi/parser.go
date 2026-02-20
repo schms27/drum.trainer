@@ -16,6 +16,7 @@ type ParseResult struct {
 	Notes      []models.NoteEvent
 	DurationMs float64
 	PPQ        int
+	BPM        float64
 	Name       string // from TrackName meta event or filename fallback
 }
 
@@ -39,6 +40,7 @@ func ParseMIDIFile(data []byte, filename string) (*ParseResult, error) {
 		notes       []models.NoteEvent
 		trackName   string
 		maxTickSeen int64
+		bpm         = 120.0 // MIDI default when no tempo event is present
 	)
 
 	// Iterate all tracks and accumulate absolute tick positions.
@@ -57,6 +59,14 @@ func ParseMIDIFile(data []byte, filename string) (*ParseResult, error) {
 				var name string
 				if msg.GetMetaTrackName(&name) {
 					trackName = name
+				}
+			}
+
+			// Capture the first tempo event (microseconds per beat → BPM).
+			if bpm == 120.0 {
+				var t float64
+				if msg.GetMetaTempo(&t) && t > 0 {
+					bpm = t
 				}
 			}
 
@@ -111,6 +121,7 @@ func ParseMIDIFile(data []byte, filename string) (*ParseResult, error) {
 		Notes:      notes,
 		DurationMs: durationMs,
 		PPQ:        ppq,
+		BPM:        bpm,
 		Name:       trackName,
 	}, nil
 }

@@ -18,10 +18,10 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 	defer tx.Rollback()
 
 	res, err := tx.Exec(
-		`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		track.Name, track.Filename, track.FilePath,
-		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ,
+		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("insert track: %w", err)
@@ -54,7 +54,7 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 // GetTrack returns a track by ID (without notes).
 func GetTrack(db *sql.DB, id int64) (*models.Track, error) {
 	row := db.QueryRow(
-		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, created_at
+		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, created_at
 		 FROM tracks WHERE id = ?`, id,
 	)
 	return scanTrack(row)
@@ -85,7 +85,7 @@ func GetTrackNotes(db *sql.DB, trackID int64) ([]models.NoteEvent, error) {
 // ListTracks returns all tracks without notes, newest first.
 func ListTracks(db *sql.DB) ([]models.Track, error) {
 	rows, err := db.Query(
-		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, created_at
+		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, created_at
 		 FROM tracks ORDER BY id DESC`,
 	)
 	if err != nil {
@@ -201,7 +201,7 @@ func scanTrack(s scanner) (*models.Track, error) {
 	var createdAt string
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
-		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &createdAt,
+		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &createdAt,
 	)
 	if err != nil {
 		return nil, err

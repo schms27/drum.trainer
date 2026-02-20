@@ -12,6 +12,7 @@ type Track struct {
 	DurationMs float64   `json:"duration_ms"`
 	NoteCount  int       `json:"note_count"`
 	PPQ        int       `json:"ppq"`
+	BPM        float64   `json:"bpm"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 

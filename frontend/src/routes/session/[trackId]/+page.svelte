@@ -3,6 +3,7 @@
 	import MidiDeviceSelector from '$lib/components/recorder/MidiDeviceSelector.svelte';
 	import RecordingControls from '$lib/components/recorder/RecordingControls.svelte';
 	import PlayButton from '$lib/components/PlayButton.svelte';
+	import Metronome from '$lib/components/Metronome.svelte';
 	import { submitSession } from '$lib/api/sessions';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { PageData } from './$types';
@@ -65,6 +66,9 @@
 	<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 max-w-sm">
 		<MidiDeviceSelector bind:selectedId={selectedDeviceId} />
 	</div>
+
+	<!-- Metronome -->
+	<Metronome initialBpm={track.bpm} />
 
 	<!-- Recording controls + live feed -->
 	<div>
