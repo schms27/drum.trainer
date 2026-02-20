@@ -2,7 +2,8 @@
 	import type { MatchedHit } from '$lib/types/session';
 	import * as d3 from 'd3';
 
-	let { hits }: { hits: MatchedHit[] } = $props();
+	let { hits = [] }: { hits: MatchedHit[] | null } = $props();
+	const safeHits = $derived(hits ?? []);
 
 	const WIDTH = 560;
 	const HEIGHT = 200;
@@ -13,7 +14,7 @@
 	const innerW = WIDTH - MARGIN.left - MARGIN.right;
 	const innerH = HEIGHT - MARGIN.top - MARGIN.bottom;
 
-	const offsets = $derived(hits.map((h) => h.offset_ms));
+	const offsets = $derived(safeHits.map((h) => h.offset_ms));
 
 	const x = $derived(d3.scaleLinear().domain(DOMAIN).range([0, innerW]));
 
@@ -41,7 +42,7 @@
 
 <div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
 	<h3 class="text-sm font-semibold text-zinc-300 mb-4">Timing Distribution</h3>
-	{#if hits.length === 0}
+	{#if safeHits.length === 0}
 		<p class="text-zinc-500 text-sm">No matched hits to display.</p>
 	{:else}
 		<svg viewBox="0 0 {WIDTH} {HEIGHT}" class="w-full" aria-label="Timing histogram">

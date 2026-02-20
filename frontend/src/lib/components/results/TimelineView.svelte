@@ -9,10 +9,12 @@
 		durationMs
 	}: {
 		targetNotes: NoteEvent[];
-		matchedHits: MatchedHit[];
-		breakdown: InstrumentBreakdown[];
+		matchedHits: MatchedHit[] | null;
+		breakdown: InstrumentBreakdown[] | null;
 		durationMs: number;
 	} = $props();
+	const safeHits = $derived(matchedHits ?? []);
+	const safeBreakdown = $derived(breakdown ?? []);
 
 	const WIDTH = 680;
 	const ROW_H = 32;
@@ -20,7 +22,7 @@
 	const MARGIN = { top: 8, bottom: 16 };
 	const DOT_R = 5;
 
-	const groups = $derived(breakdown.map((b) => b.instrument));
+	const groups = $derived(safeBreakdown.map((b) => b.instrument));
 	const svgH = $derived(MARGIN.top + groups.length * ROW_H + MARGIN.bottom);
 	const trackW = $derived(WIDTH - LABEL_W);
 
@@ -34,7 +36,7 @@
 	// Build a lookup: instrument → set of matched recorded times (for coloring)
 	const matchedMap = $derived(() => {
 		const m = new Map<string, Set<number>>();
-		for (const h of matchedHits) {
+		for (const h of safeHits) {
 			if (!m.has(h.instrument)) m.set(h.instrument, new Set());
 			m.get(h.instrument)!.add(h.recorded_time_ms);
 		}
@@ -100,7 +102,7 @@
 			{/each}
 
 			<!-- Matched hits: filled circles, colored by offset -->
-			{#each matchedHits as hit}
+			{#each safeHits as hit}
 				{@const gi = groups.indexOf(hit.instrument)}
 				{#if gi >= 0}
 					<circle

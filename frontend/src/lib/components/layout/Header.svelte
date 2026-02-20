@@ -7,5 +7,6 @@
 	</a>
 	<nav class="flex gap-4 ml-auto text-sm">
 		<a href="/" class="text-zinc-400 hover:text-white transition">Tracks</a>
+		<a href="/history" class="text-zinc-400 hover:text-white transition">History</a>
 	</nav>
 </header>
