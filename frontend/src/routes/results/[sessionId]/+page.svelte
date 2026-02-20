@@ -3,11 +3,19 @@
 	import InstrumentTable from '$lib/components/results/InstrumentTable.svelte';
 	import TimingHistogram from '$lib/components/results/TimingHistogram.svelte';
 	import TimelineView from '$lib/components/results/TimelineView.svelte';
+	import PlayButton from '$lib/components/PlayButton.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 	const { sessionResult, track } = data;
 	const { session, score } = sessionResult;
+
+	// Convert matched hits to the common PlayableHit shape for playback.
+	const recordingHits = score.matched_hits.map((h) => ({
+		note_number: h.note_number,
+		time_ms: h.recorded_time_ms,
+		velocity: 100
+	}));
 </script>
 
 <div class="flex flex-col gap-8">
@@ -19,6 +27,10 @@
 		<p class="text-zinc-400 text-sm mt-1">
 			{session.hit_count} hits recorded · Session #{session.id}
 		</p>
+		<div class="flex gap-2 mt-3">
+			<PlayButton hits={track.notes} label="Target Track" />
+			<PlayButton hits={recordingHits} label="My Recording" />
+		</div>
 	</div>
 
 	<!-- Summary cards -->

@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import MidiDeviceSelector from '$lib/components/recorder/MidiDeviceSelector.svelte';
 	import RecordingControls from '$lib/components/recorder/RecordingControls.svelte';
+	import PlayButton from '$lib/components/PlayButton.svelte';
 	import { submitSession } from '$lib/api/sessions';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { PageData } from './$types';
@@ -49,10 +50,15 @@
 	<!-- Track info -->
 	<div>
 		<a href="/" class="text-zinc-500 hover:text-zinc-300 text-sm transition">← Back to tracks</a>
-		<h1 class="text-2xl font-bold text-white mt-2">{track.name}</h1>
-		<p class="text-zinc-400 text-sm mt-1">
-			{track.note_count} notes · {formatDuration(track.duration_ms)} · {track.filename}
-		</p>
+		<div class="flex items-start justify-between mt-2 gap-4">
+			<div>
+				<h1 class="text-2xl font-bold text-white">{track.name}</h1>
+				<p class="text-zinc-400 text-sm mt-1">
+					{track.note_count} notes · {formatDuration(track.duration_ms)} · {track.filename}
+				</p>
+			</div>
+			<PlayButton hits={track.notes} label="Preview Track" />
+		</div>
 	</div>
 
 	<!-- Device selector -->
