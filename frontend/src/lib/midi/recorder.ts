@@ -20,22 +20,31 @@ export async function listMidiInputs(): Promise<MidiDevice[]> {
 	}
 }
 
-export type RecorderState = 'idle' | 'recording' | 'stopped';
+export type RecorderState = 'idle' | 'waiting' | 'recording' | 'stopped';
 
 export interface Recorder {
 	state: RecorderState;
 	hits: RecordedHit[];
-	start: () => void;
+	/** Arms the recorder: listens for MIDI but only starts the clock on the first hit. */
+	arm: () => void;
 	stop: () => RecordedHit[];
 	reset: () => void;
 	destroy: () => void;
+}
+
+export interface RecorderOptions {
+	/** Called the moment the first hit is received and the clock starts. */
+	onStarted?: () => void;
 }
 
 /**
  * Creates a recorder that listens to a specific MIDI input.
  * The caller is responsible for calling destroy() when done.
  */
-export async function createRecorder(deviceId: string): Promise<Recorder> {
+export async function createRecorder(
+	deviceId: string,
+	options?: RecorderOptions
+): Promise<Recorder> {
 	const access = await navigator.requestMIDIAccess({ sysex: false });
 	const input = access.inputs.get(deviceId);
 
@@ -46,7 +55,7 @@ export async function createRecorder(deviceId: string): Promise<Recorder> {
 	let startTime = 0;
 
 	const onMessage = (event: MIDIMessageEvent) => {
-		if (state !== 'recording') return;
+		if (state !== 'waiting' && state !== 'recording') return;
 
 		const data = event.data;
 		if (!data || data.length < 3) return;
@@ -58,6 +67,13 @@ export async function createRecorder(deviceId: string): Promise<Recorder> {
 		// NoteOn: status high nibble = 0x9, velocity > 0
 		const isNoteOn = (status & 0xf0) === 0x90 && velocity > 0;
 		if (!isNoteOn) return;
+
+		// First hit while waiting — start the clock now.
+		if (state === 'waiting') {
+			startTime = event.timeStamp;
+			state = 'recording';
+			options?.onStarted?.();
+		}
 
 		const timeMs = event.timeStamp - startTime;
 		hits.push({ note_number: note, time_ms: timeMs, velocity });
@@ -72,10 +88,9 @@ export async function createRecorder(deviceId: string): Promise<Recorder> {
 		get hits() {
 			return [...hits];
 		},
-		start() {
+		arm() {
 			hits = [];
-			startTime = performance.now();
-			state = 'recording';
+			state = 'waiting';
 		},
 		stop() {
 			state = 'stopped';

@@ -11,7 +11,7 @@
 		onFinished: (hits: RecordedHit[], startedAt: string, endedAt: string) => void;
 	} = $props();
 
-	type State = 'idle' | 'recording' | 'stopping';
+	type State = 'idle' | 'waiting' | 'recording' | 'stopping';
 
 	let recorderState = $state<State>('idle');
 	let recorder: Recorder | null = null;
@@ -27,15 +27,19 @@
 		}
 		error = '';
 		try {
-			recorder = await createRecorder(deviceId);
+			recorder = await createRecorder(deviceId, {
+				onStarted() {
+					startedAt = new Date().toISOString();
+					recorderState = 'recording';
+				}
+			});
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : 'Failed to open MIDI device';
 			return;
 		}
 
-		startedAt = new Date().toISOString();
-		recorder.start();
-		recorderState = 'recording';
+		recorder.arm();
+		recorderState = 'waiting';
 
 		// Poll for live display every 80ms.
 		pollInterval = setInterval(() => {
@@ -46,12 +50,20 @@
 	function stop() {
 		if (!recorder) return;
 		clearInterval(pollInterval);
-		recorderState = 'stopping';
 		const hits = recorder.stop();
-		liveHits = hits;
-		const endedAt = new Date().toISOString();
 		recorder.destroy();
 		recorder = null;
+
+		// If no hit was ever received the clock never started — just reset.
+		if (!startedAt) {
+			liveHits = [];
+			recorderState = 'idle';
+			return;
+		}
+
+		liveHits = hits;
+		recorderState = 'stopping';
+		const endedAt = new Date().toISOString();
 		onFinished(hits, startedAt, endedAt);
 	}
 
@@ -60,6 +72,7 @@
 		recorder?.destroy();
 		recorder = null;
 		liveHits = [];
+		startedAt = '';
 		recorderState = 'idle';
 		error = '';
 	}
@@ -75,6 +88,14 @@
 			>
 				▶ Start Recording
 			</button>
+		{:else if recorderState === 'waiting'}
+			<button
+				onclick={stop}
+				class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition"
+			>
+				⏹ Stop
+			</button>
+			<span class="text-yellow-400 text-sm animate-pulse">◉ Waiting for first hit…</span>
 		{:else if recorderState === 'recording'}
 			<button
 				onclick={stop}
