@@ -58,4 +58,10 @@
 	>
 		Practice
 	</a>
+	<a
+		href="/tracks/{track.id}/mapping"
+		class="block text-center text-zinc-400 hover:text-white text-xs transition"
+	>
+		Edit Mapping
+	</a>
 </div>

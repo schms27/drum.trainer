@@ -58,8 +58,17 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Load per-track mapping overrides (ignore error; fall back to defaults).
+	trackMap, _ := dbpkg.GetTrackMapping(h.db, req.TrackID)
+	instrFunc := func(n int) string {
+		if g, ok := trackMap[n]; ok {
+			return g
+		}
+		return midipkg.InstrumentGroup(n)
+	}
+
 	// Run the scoring algorithm.
-	score := scoring.Score(targetNotes, req.Hits, midipkg.InstrumentGroup)
+	score := scoring.Score(targetNotes, req.Hits, instrFunc)
 
 	session := &models.Session{
 		TrackID:    req.TrackID,
@@ -69,9 +78,9 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		HitCount:   len(req.Hits),
 	}
 
-	// Build instrument group map for raw hit annotation.
-	instrMap := make(map[string]string)
-	for note, group := range midipkg.DrumMap {
+	// Build instrument group map for raw hit annotation, merging custom overrides.
+	instrMap := midipkg.InstrumentGroupMap()
+	for note, group := range trackMap {
 		instrMap[strconv.Itoa(note)] = group
 	}
 

@@ -20,3 +20,9 @@ type TrackWithNotes struct {
 	Track
 	Notes []NoteEvent `json:"notes"`
 }
+
+// NoteMapping associates a MIDI note number with an instrument group name.
+type NoteMapping struct {
+	NoteNumber int    `json:"note_number"`
+	Instrument string `json:"instrument"`
+}

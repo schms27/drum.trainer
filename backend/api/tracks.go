@@ -151,6 +151,102 @@ func (h *tracksHandler) delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// GET /api/v1/tracks/{id}/mapping
+func (h *tracksHandler) getMapping(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	if _, err := dbpkg.GetTrack(h.db, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "track not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, "failed to fetch track")
+		}
+		return
+	}
+
+	mappings, err := buildMappings(h.db, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"mappings": mappings})
+}
+
+// PUT /api/v1/tracks/{id}/mapping
+func (h *tracksHandler) updateMapping(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	if _, err := dbpkg.GetTrack(h.db, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "track not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, "failed to fetch track")
+		}
+		return
+	}
+
+	var body struct {
+		Mappings []models.NoteMapping `json:"mappings"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	valid := map[string]bool{
+		"Bass Drum": true, "Snare": true, "Hi-Hat": true,
+		"Crash": true, "Ride": true, "Tom": true, "Other": true,
+	}
+	for _, m := range body.Mappings {
+		if !valid[m.Instrument] {
+			writeError(w, http.StatusBadRequest, "invalid instrument: "+m.Instrument)
+			return
+		}
+	}
+
+	if err := dbpkg.SetTrackMapping(h.db, id, body.Mappings); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save mapping")
+		return
+	}
+
+	mappings, err := buildMappings(h.db, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"mappings": mappings})
+}
+
+// buildMappings returns the effective note→instrument list for a track,
+// merging default GM groups with any custom overrides.
+func buildMappings(db *sql.DB, trackID int64) ([]models.NoteMapping, error) {
+	noteNumbers, err := dbpkg.GetTrackNoteNumbers(db, trackID)
+	if err != nil {
+		return nil, err
+	}
+	customMap, err := dbpkg.GetTrackMapping(db, trackID)
+	if err != nil {
+		return nil, err
+	}
+	mappings := make([]models.NoteMapping, 0, len(noteNumbers))
+	for _, note := range noteNumbers {
+		instr := midipkg.InstrumentGroup(note)
+		if override, ok := customMap[note]; ok {
+			instr = override
+		}
+		mappings = append(mappings, models.NoteMapping{NoteNumber: note, Instrument: instr})
+	}
+	return mappings, nil
+}
+
 func parseID(s string) (int64, error) {
 	return strconv.ParseInt(s, 10, 64)
 }

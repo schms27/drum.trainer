@@ -72,3 +72,10 @@ CREATE TABLE IF NOT EXISTS session_instrument_scores (
 );
 
 CREATE INDEX IF NOT EXISTS idx_instr_scores_session ON session_instrument_scores(session_id);
+
+CREATE TABLE IF NOT EXISTS track_note_mappings (
+    track_id    INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    note_number INTEGER NOT NULL,
+    instrument  TEXT    NOT NULL,
+    PRIMARY KEY (track_id, note_number)
+);

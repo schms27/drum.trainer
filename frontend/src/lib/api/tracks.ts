@@ -1,4 +1,4 @@
-import type { Track, TrackWithNotes } from '$lib/types/track';
+import type { Track, TrackWithNotes, NoteMapping } from '$lib/types/track';
 import { apiFetch } from './client';
 
 export async function listTracks(): Promise<Track[]> {
@@ -49,4 +49,20 @@ export async function uploadTrack(
 
 export async function deleteTrack(id: number): Promise<void> {
 	await apiFetch(`/tracks/${id}`, { method: 'DELETE' });
+}
+
+export async function getTrackMapping(trackId: number): Promise<NoteMapping[]> {
+	const data = await apiFetch<{ mappings: NoteMapping[] }>(`/tracks/${trackId}/mapping`);
+	return data.mappings;
+}
+
+export async function updateTrackMapping(
+	trackId: number,
+	mappings: NoteMapping[]
+): Promise<NoteMapping[]> {
+	const data = await apiFetch<{ mappings: NoteMapping[] }>(`/tracks/${trackId}/mapping`, {
+		method: 'PUT',
+		body: JSON.stringify({ mappings })
+	});
+	return data.mappings;
 }

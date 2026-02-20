@@ -19,3 +19,8 @@ export interface Track {
 export interface TrackWithNotes extends Track {
 	notes: NoteEvent[];
 }
+
+export interface NoteMapping {
+	note_number: number;
+	instrument: string;
+}

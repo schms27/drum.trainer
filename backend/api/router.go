@@ -19,7 +19,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64) http.Hand
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:4173"},
-		AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type"},
 		AllowCredentials: false,
 		MaxAge:           300,
@@ -36,6 +36,8 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64) http.Hand
 		r.Get("/tracks", th.list)
 		r.Get("/tracks/{id}", th.get)
 		r.Delete("/tracks/{id}", th.delete)
+		r.Get("/tracks/{id}/mapping", th.getMapping)
+		r.Put("/tracks/{id}/mapping", th.updateMapping)
 
 		// Sessions.
 		r.Post("/sessions", sh.create)

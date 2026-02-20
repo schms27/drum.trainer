@@ -117,6 +117,80 @@ func DeleteTrack(db *sql.DB, id int64) error {
 	return nil
 }
 
+// GetTrackNoteNumbers returns the distinct MIDI note numbers used in a track.
+func GetTrackNoteNumbers(db *sql.DB, trackID int64) ([]int, error) {
+	rows, err := db.Query(
+		`SELECT DISTINCT note_number FROM track_notes WHERE track_id = ? ORDER BY note_number ASC`,
+		trackID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var notes []int
+	for rows.Next() {
+		var n int
+		if err := rows.Scan(&n); err != nil {
+			return nil, err
+		}
+		notes = append(notes, n)
+	}
+	return notes, rows.Err()
+}
+
+// GetTrackMapping returns the custom note-to-instrument overrides for a track.
+// The map is empty if no overrides have been set.
+func GetTrackMapping(db *sql.DB, trackID int64) (map[int]string, error) {
+	rows, err := db.Query(
+		`SELECT note_number, instrument FROM track_note_mappings WHERE track_id = ?`,
+		trackID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	m := make(map[int]string)
+	for rows.Next() {
+		var note int
+		var instr string
+		if err := rows.Scan(&note, &instr); err != nil {
+			return nil, err
+		}
+		m[note] = instr
+	}
+	return m, rows.Err()
+}
+
+// SetTrackMapping replaces all custom note mappings for a track in one transaction.
+func SetTrackMapping(db *sql.DB, trackID int64, mappings []models.NoteMapping) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`DELETE FROM track_note_mappings WHERE track_id = ?`, trackID); err != nil {
+		return fmt.Errorf("delete old mappings: %w", err)
+	}
+
+	stmt, err := tx.Prepare(
+		`INSERT INTO track_note_mappings (track_id, note_number, instrument) VALUES (?, ?, ?)`,
+	)
+	if err != nil {
+		return fmt.Errorf("prepare mapping insert: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, m := range mappings {
+		if _, err := stmt.Exec(trackID, m.NoteNumber, m.Instrument); err != nil {
+			return fmt.Errorf("insert mapping: %w", err)
+		}
+	}
+	return tx.Commit()
+}
+
 // scanner is satisfied by both *sql.Row and *sql.Rows.
 type scanner interface {
 	Scan(dest ...any) error
