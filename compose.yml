@@ -16,7 +16,7 @@ services:
       POSTGRES_USER:     drum
       POSTGRES_PASSWORD: drum
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ${CONTAINER_MOUNTS_PATH}/drum-trainer/postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U drum -d drumtrainer"]
       interval: 5s
@@ -32,7 +32,7 @@ services:
     environment:
       DATABASE_URL: postgres://drum:drum@postgres:5432/drumtrainer
     volumes:
-      - data:/data
+      - ${CONTAINER_MOUNTS_PATH}/drum-trainer/data:/data
 
   frontend:
     image: codeberg.org/trashtr00per/drum-trainer-frontend:latest
@@ -50,10 +50,6 @@ services:
       - backend
       - frontend
     ports:
-      - "80:80"
+      - "9980:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-
-volumes:
-  data:
-  pgdata:
+      - ${CONTAINER_MOUNTS_PATH}/drum-trainer/nginx.conf:/etc/nginx/conf.d/default.conf:ro
