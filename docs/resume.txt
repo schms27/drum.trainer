@@ -1,3 +1,0 @@
-claude --resume c9a82bd4-e54f-4d91-8af4-35e843fd8e16
-claude --resume 1d6c9c9a-fdb2-468b-9a14-c47f38065c88
-claude --resume 1d6c9c9a-fdb2-468b-9a14-c47f38065c88
