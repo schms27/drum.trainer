@@ -16,12 +16,14 @@ import (
 func main() {
 	cfg := config.Load()
 
-	// Ensure data directory exists.
-	if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0755); err != nil {
-		log.Fatalf("create data dir: %v", err)
+	// Ensure local data directory exists (SQLite only).
+	if cfg.DatabaseURL == "" {
+		if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0755); err != nil {
+			log.Fatalf("create data dir: %v", err)
+		}
 	}
 
-	database, err := db.Open(cfg.DBPath)
+	database, err := db.Open(cfg)
 	if err != nil {
 		log.Fatalf("open database: %v", err)
 	}

@@ -3,11 +3,34 @@
 #
 # Or create a .env file in this directory containing:
 #   CODEBERG_USER=yourname
+#
+# PostgreSQL is used by default. To revert to SQLite, remove the DATABASE_URL
+# environment variable from the backend service and the postgres service/volume.
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       drumtrainer
+      POSTGRES_USER:     drum
+      POSTGRES_PASSWORD: drum
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drum -d drumtrainer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     image: codeberg.org/${CODEBERG_USER}/drum-trainer-backend:latest
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://drum:drum@postgres:5432/drumtrainer
     volumes:
       - data:/data
 
@@ -33,3 +56,4 @@ services:
 
 volumes:
   data:
+  pgdata:

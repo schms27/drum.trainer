@@ -17,28 +17,24 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec(
-		`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count)
-		 VALUES (?, ?, ?, ?, ?)`,
+	var sessionID int64
+	err = tx.QueryRow(
+		Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count)
+		 VALUES (?, ?, ?, ?, ?) RETURNING id`),
 		session.TrackID,
 		session.StartedAt.UTC().Format(time.RFC3339),
 		session.EndedAt.UTC().Format(time.RFC3339),
 		session.DurationMs,
 		session.HitCount,
-	)
+	).Scan(&sessionID)
 	if err != nil {
 		return 0, fmt.Errorf("insert session: %w", err)
 	}
 
-	sessionID, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
 	// Insert raw hits.
 	hitStmt, err := tx.Prepare(
-		`INSERT INTO session_hits (session_id, note_number, time_ms, velocity, instrument)
-		 VALUES (?, ?, ?, ?, ?)`,
+		Rebind(`INSERT INTO session_hits (session_id, note_number, time_ms, velocity, instrument)
+		 VALUES (?, ?, ?, ?, ?)`),
 	)
 	if err != nil {
 		return 0, err
@@ -62,8 +58,8 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 	}
 
 	_, err = tx.Exec(
-		`INSERT INTO session_scores (session_id, hit_rate, miss_rate, ghost_rate, avg_offset_ms, std_offset_ms, score_json)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		Rebind(`INSERT INTO session_scores (session_id, hit_rate, miss_rate, ghost_rate, avg_offset_ms, std_offset_ms, score_json)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`),
 		sessionID, score.HitRate, score.MissRate, score.GhostRate,
 		score.AvgOffsetMs, score.StdOffsetMs, string(scoreJSON),
 	)
@@ -73,9 +69,9 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 
 	// Insert per-instrument breakdown rows.
 	instrStmt, err := tx.Prepare(
-		`INSERT INTO session_instrument_scores
+		Rebind(`INSERT INTO session_instrument_scores
 		 (session_id, instrument, target_count, matched_count, missed_count, ghost_count, hit_rate, avg_offset_ms, std_offset_ms)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
 	)
 	if err != nil {
 		return 0, err
@@ -98,8 +94,8 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 // GetSession returns a session's metadata by ID.
 func GetSession(db *sql.DB, id int64) (*models.Session, error) {
 	row := db.QueryRow(
-		`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at
-		 FROM sessions WHERE id = ?`, id,
+		Rebind(`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at
+		 FROM sessions WHERE id = ?`), id,
 	)
 	return scanSession(row)
 }
@@ -108,7 +104,7 @@ func GetSession(db *sql.DB, id int64) (*models.Session, error) {
 func GetSessionScore(db *sql.DB, sessionID int64) (*models.ScoreResult, error) {
 	var blob string
 	err := db.QueryRow(
-		`SELECT score_json FROM session_scores WHERE session_id = ?`, sessionID,
+		Rebind(`SELECT score_json FROM session_scores WHERE session_id = ?`), sessionID,
 	).Scan(&blob)
 	if err != nil {
 		return nil, err
@@ -134,7 +130,7 @@ func ListSessions(db *sql.DB, trackID int64) ([]models.SessionSummary, error) {
 	}
 	query += ` ORDER BY s.id DESC`
 
-	rows, err := db.Query(query, args...)
+	rows, err := db.Query(Rebind(query), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -143,11 +139,11 @@ func ListSessions(db *sql.DB, trackID int64) ([]models.SessionSummary, error) {
 	var list []models.SessionSummary
 	for rows.Next() {
 		var s models.SessionSummary
-		var createdAt string
-		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.HitRate, &s.AvgOffsetMs, &createdAt); err != nil {
+		var ct scanTime
+		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.HitRate, &s.AvgOffsetMs, &ct); err != nil {
 			return nil, err
 		}
-		s.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+		s.CreatedAt = ct.T
 		list = append(list, s)
 	}
 	return list, rows.Err()
@@ -155,13 +151,14 @@ func ListSessions(db *sql.DB, trackID int64) ([]models.SessionSummary, error) {
 
 func scanSession(s scanner) (*models.Session, error) {
 	var sess models.Session
-	var startedAt, endedAt, createdAt string
-	err := s.Scan(&sess.ID, &sess.TrackID, &startedAt, &endedAt, &sess.DurationMs, &sess.HitCount, &createdAt)
+	var startedAt, endedAt scanTime
+	var ct scanTime
+	err := s.Scan(&sess.ID, &sess.TrackID, &startedAt, &endedAt, &sess.DurationMs, &sess.HitCount, &ct)
 	if err != nil {
 		return nil, err
 	}
-	sess.StartedAt, _ = time.Parse(time.RFC3339, startedAt)
-	sess.EndedAt, _ = time.Parse(time.RFC3339, endedAt)
-	sess.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+	sess.StartedAt = startedAt.T
+	sess.EndedAt = endedAt.T
+	sess.CreatedAt = ct.T
 	return &sess, nil
 }

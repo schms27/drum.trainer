@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/simu/drum-trainer/backend/models"
 )
@@ -17,25 +16,21 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec(
-		`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+	var trackID int64
+	err = tx.QueryRow(
+		Rebind(`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
 		track.Name, track.Filename, track.FilePath,
 		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM,
-	)
+	).Scan(&trackID)
 	if err != nil {
 		return 0, fmt.Errorf("insert track: %w", err)
 	}
 
-	trackID, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
 	// Bulk-insert notes using a prepared statement for performance.
 	stmt, err := tx.Prepare(
-		`INSERT INTO track_notes (track_id, note_number, time_ms, velocity, instrument)
-		 VALUES (?, ?, ?, ?, ?)`,
+		Rebind(`INSERT INTO track_notes (track_id, note_number, time_ms, velocity, instrument)
+		 VALUES (?, ?, ?, ?, ?)`),
 	)
 	if err != nil {
 		return 0, fmt.Errorf("prepare note insert: %w", err)
@@ -54,8 +49,8 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 // GetTrack returns a track by ID (without notes).
 func GetTrack(db *sql.DB, id int64) (*models.Track, error) {
 	row := db.QueryRow(
-		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, practice_bpm, created_at
-		 FROM tracks WHERE id = ?`, id,
+		Rebind(`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, practice_bpm, created_at
+		 FROM tracks WHERE id = ?`), id,
 	)
 	return scanTrack(row)
 }
@@ -63,8 +58,8 @@ func GetTrack(db *sql.DB, id int64) (*models.Track, error) {
 // GetTrackNotes returns all parsed notes for a track, sorted by time.
 func GetTrackNotes(db *sql.DB, trackID int64) ([]models.NoteEvent, error) {
 	rows, err := db.Query(
-		`SELECT note_number, time_ms, velocity, instrument
-		 FROM track_notes WHERE track_id = ? ORDER BY time_ms ASC`, trackID,
+		Rebind(`SELECT note_number, time_ms, velocity, instrument
+		 FROM track_notes WHERE track_id = ? ORDER BY time_ms ASC`), trackID,
 	)
 	if err != nil {
 		return nil, err
@@ -106,7 +101,7 @@ func ListTracks(db *sql.DB) ([]models.Track, error) {
 
 // DeleteTrack removes a track and all related data (sessions/notes cascade).
 func DeleteTrack(db *sql.DB, id int64) error {
-	res, err := db.Exec(`DELETE FROM tracks WHERE id = ?`, id)
+	res, err := db.Exec(Rebind(`DELETE FROM tracks WHERE id = ?`), id)
 	if err != nil {
 		return err
 	}
@@ -120,7 +115,7 @@ func DeleteTrack(db *sql.DB, id int64) error {
 // GetTrackNoteNumbers returns the distinct MIDI note numbers used in a track.
 func GetTrackNoteNumbers(db *sql.DB, trackID int64) ([]int, error) {
 	rows, err := db.Query(
-		`SELECT DISTINCT note_number FROM track_notes WHERE track_id = ? ORDER BY note_number ASC`,
+		Rebind(`SELECT DISTINCT note_number FROM track_notes WHERE track_id = ? ORDER BY note_number ASC`),
 		trackID,
 	)
 	if err != nil {
@@ -143,7 +138,7 @@ func GetTrackNoteNumbers(db *sql.DB, trackID int64) ([]int, error) {
 // The map is empty if no overrides have been set.
 func GetTrackMapping(db *sql.DB, trackID int64) (map[int]string, error) {
 	rows, err := db.Query(
-		`SELECT note_number, instrument FROM track_note_mappings WHERE track_id = ?`,
+		Rebind(`SELECT note_number, instrument FROM track_note_mappings WHERE track_id = ?`),
 		trackID,
 	)
 	if err != nil {
@@ -171,12 +166,12 @@ func SetTrackMapping(db *sql.DB, trackID int64, mappings []models.NoteMapping) e
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec(`DELETE FROM track_note_mappings WHERE track_id = ?`, trackID); err != nil {
+	if _, err := tx.Exec(Rebind(`DELETE FROM track_note_mappings WHERE track_id = ?`), trackID); err != nil {
 		return fmt.Errorf("delete old mappings: %w", err)
 	}
 
 	stmt, err := tx.Prepare(
-		`INSERT INTO track_note_mappings (track_id, note_number, instrument) VALUES (?, ?, ?)`,
+		Rebind(`INSERT INTO track_note_mappings (track_id, note_number, instrument) VALUES (?, ?, ?)`),
 	)
 	if err != nil {
 		return fmt.Errorf("prepare mapping insert: %w", err)
@@ -199,7 +194,7 @@ type scanner interface {
 // SetPracticeBPM persists the user's preferred practice tempo for a track.
 // Pass nil to revert to the track's native BPM.
 func SetPracticeBPM(db *sql.DB, trackID int64, bpm *float64) error {
-	res, err := db.Exec(`UPDATE tracks SET practice_bpm = ? WHERE id = ?`, bpm, trackID)
+	res, err := db.Exec(Rebind(`UPDATE tracks SET practice_bpm = ? WHERE id = ?`), bpm, trackID)
 	if err != nil {
 		return err
 	}
@@ -213,10 +208,10 @@ func SetPracticeBPM(db *sql.DB, trackID int64, bpm *float64) error {
 func scanTrack(s scanner) (*models.Track, error) {
 	var t models.Track
 	var practiceBPM sql.NullFloat64
-	var createdAt string
+	var ct scanTime
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
-		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &practiceBPM, &createdAt,
+		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &practiceBPM, &ct,
 	)
 	if err != nil {
 		return nil, err
@@ -224,6 +219,6 @@ func scanTrack(s scanner) (*models.Track, error) {
 	if practiceBPM.Valid {
 		t.PracticeBPM = &practiceBPM.Float64
 	}
-	t.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+	t.CreatedAt = ct.T
 	return &t, nil
 }
