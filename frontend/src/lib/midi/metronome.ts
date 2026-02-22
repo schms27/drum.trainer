@@ -9,6 +9,11 @@ export interface Metronome {
 	start(): void;
 	stop(): void;
 	setBpm(bpm: number): void;
+	/**
+	 * Milliseconds until the next bar-1 accent beat, or null if stopped.
+	 * Use this to delay playback so it starts in phase with the metronome.
+	 */
+	getNextBeat1DelayMs(): number | null;
 }
 
 export function createMetronome(initialBpm: number, options?: MetronomeOptions): Metronome {
@@ -79,6 +84,14 @@ export function createMetronome(initialBpm: number, options?: MetronomeOptions):
 		},
 		setBpm(newBpm: number) {
 			bpm = newBpm;
+		},
+		getNextBeat1DelayMs() {
+			if (!ctx) return null;
+			// How many beats until the next bar-1 accent?
+			const phase = beatIndex % beatsPerBar;
+			const beatsUntilBeat1 = (beatsPerBar - phase) % beatsPerBar;
+			const secs = (nextBeatTime - ctx.currentTime) + beatsUntilBeat1 * (60 / bpm);
+			return secs * 1000;
 		}
 	};
 }

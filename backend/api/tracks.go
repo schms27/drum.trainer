@@ -152,6 +152,38 @@ func (h *tracksHandler) delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// PATCH /api/v1/tracks/{id}/practice-bpm
+func (h *tracksHandler) setPracticeBPM(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	var body struct {
+		BPM *float64 `json:"bpm"` // null clears the override
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if body.BPM != nil && (*body.BPM < 20 || *body.BPM > 300) {
+		writeError(w, http.StatusBadRequest, "bpm must be between 20 and 300")
+		return
+	}
+
+	if err := dbpkg.SetPracticeBPM(h.db, id, body.BPM); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "track not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, "failed to save practice BPM")
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // GET /api/v1/tracks/{id}/mapping
 func (h *tracksHandler) getMapping(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(chi.URLParam(r, "id"))

@@ -5,6 +5,7 @@
 	import PlayButton from '$lib/components/PlayButton.svelte';
 	import Metronome from '$lib/components/Metronome.svelte';
 	import { submitSession } from '$lib/api/sessions';
+	import { setPracticeBpm } from '$lib/api/tracks';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { PageData } from './$types';
 
@@ -14,6 +15,18 @@
 	let selectedDeviceId = $state('');
 	let submitting = $state(false);
 	let submitError = $state('');
+	let activeMetronome = $state<import('$lib/midi/metronome').Metronome | null>(null);
+
+	let saveBpmTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function handleBpmChange(newBpm: number) {
+		if (saveBpmTimer) clearTimeout(saveBpmTimer);
+		saveBpmTimer = setTimeout(() => {
+			// Save null when the user has reset back to the track's native tempo.
+			const value = newBpm === Math.round(track.bpm) ? null : newBpm;
+			setPracticeBpm(track.id, value);
+		}, 600);
+	}
 
 	function formatDuration(ms: number) {
 		const secs = Math.floor(ms / 1000);
@@ -58,7 +71,7 @@
 					{track.note_count} notes · {formatDuration(track.duration_ms)} · {track.filename}
 				</p>
 			</div>
-			<PlayButton hits={track.notes} label="Preview Track" />
+			<PlayButton hits={track.notes} label="Preview Track" metronome={activeMetronome} />
 		</div>
 	</div>
 
@@ -68,7 +81,12 @@
 	</div>
 
 	<!-- Metronome -->
-	<Metronome initialBpm={track.bpm} />
+	<Metronome
+		initialBpm={track.practice_bpm ?? track.bpm}
+		trackBpm={track.bpm}
+		onBpmChange={handleBpmChange}
+		onMetronomeChange={(m) => (activeMetronome = m)}
+	/>
 
 	<!-- Recording controls + live feed -->
 	<div>

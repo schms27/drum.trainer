@@ -11,9 +11,10 @@ type Track struct {
 	FileSize   int64     `json:"file_size"`
 	DurationMs float64   `json:"duration_ms"`
 	NoteCount  int       `json:"note_count"`
-	PPQ        int       `json:"ppq"`
-	BPM        float64   `json:"bpm"`
-	CreatedAt  time.Time `json:"created_at"`
+	PPQ         int      `json:"ppq"`
+	BPM         float64  `json:"bpm"`
+	PracticeBPM *float64 `json:"practice_bpm"` // nil = use native BPM
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // TrackWithNotes is the full track response including parsed note events.

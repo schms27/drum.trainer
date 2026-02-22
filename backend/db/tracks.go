@@ -54,7 +54,7 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 // GetTrack returns a track by ID (without notes).
 func GetTrack(db *sql.DB, id int64) (*models.Track, error) {
 	row := db.QueryRow(
-		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, created_at
+		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, practice_bpm, created_at
 		 FROM tracks WHERE id = ?`, id,
 	)
 	return scanTrack(row)
@@ -85,7 +85,7 @@ func GetTrackNotes(db *sql.DB, trackID int64) ([]models.NoteEvent, error) {
 // ListTracks returns all tracks without notes, newest first.
 func ListTracks(db *sql.DB) ([]models.Track, error) {
 	rows, err := db.Query(
-		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, created_at
+		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, practice_bpm, created_at
 		 FROM tracks ORDER BY id DESC`,
 	)
 	if err != nil {
@@ -196,15 +196,33 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
+// SetPracticeBPM persists the user's preferred practice tempo for a track.
+// Pass nil to revert to the track's native BPM.
+func SetPracticeBPM(db *sql.DB, trackID int64, bpm *float64) error {
+	res, err := db.Exec(`UPDATE tracks SET practice_bpm = ? WHERE id = ?`, bpm, trackID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func scanTrack(s scanner) (*models.Track, error) {
 	var t models.Track
+	var practiceBPM sql.NullFloat64
 	var createdAt string
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
-		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &createdAt,
+		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &practiceBPM, &createdAt,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if practiceBPM.Valid {
+		t.PracticeBPM = &practiceBPM.Float64
 	}
 	t.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
 	return &t, nil

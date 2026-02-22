@@ -51,6 +51,13 @@ export async function deleteTrack(id: number): Promise<void> {
 	await apiFetch(`/tracks/${id}`, { method: 'DELETE' });
 }
 
+export async function setPracticeBpm(trackId: number, bpm: number | null): Promise<void> {
+	await apiFetch(`/tracks/${trackId}/practice-bpm`, {
+		method: 'PATCH',
+		body: JSON.stringify({ bpm })
+	});
+}
+
 export async function getTrackMapping(trackId: number): Promise<NoteMapping[]> {
 	const data = await apiFetch<{ mappings: NoteMapping[] }>(`/tracks/${trackId}/mapping`);
 	return data.mappings;

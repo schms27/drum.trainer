@@ -1,13 +1,29 @@
 <script lang="ts">
 	import { createMetronome, type Metronome } from '$lib/midi/metronome';
 
-	let { initialBpm = 120 }: { initialBpm?: number } = $props();
+	let {
+		initialBpm = 120,
+		trackBpm = undefined,
+		onBpmChange = undefined,
+		onMetronomeChange = undefined
+	}: {
+		initialBpm?: number;
+		/** Native tempo of the track — shown as reference, enables reset button. */
+		trackBpm?: number;
+		/** Called whenever the user changes the BPM. */
+		onBpmChange?: (bpm: number) => void;
+		/** Called with the live Metronome instance when started, null when stopped. */
+		onMetronomeChange?: (m: Metronome | null) => void;
+	} = $props();
 
 	let bpm = $state(Math.round(initialBpm));
 	let playing = $state(false);
 	let activeBeat = $state(-1);
 
 	let metronome: Metronome | null = null;
+
+	const nativeBpm = $derived(trackBpm !== undefined ? Math.round(trackBpm) : undefined);
+	const isModified = $derived(nativeBpm !== undefined && bpm !== nativeBpm);
 
 	function onBeat(beatIndex: number) {
 		activeBeat = beatIndex;
@@ -22,24 +38,32 @@
 			metronome = null;
 			playing = false;
 			activeBeat = -1;
+			onMetronomeChange?.(null);
 		} else {
 			metronome = createMetronome(bpm, { onBeat });
 			metronome.start();
 			playing = true;
+			onMetronomeChange?.(metronome);
 		}
+	}
+
+	function applyBpm(value: number) {
+		bpm = Math.max(20, Math.min(300, value));
+		metronome?.setBpm(bpm);
+		onBpmChange?.(bpm);
 	}
 
 	function handleBpmInput(e: Event) {
 		const val = parseInt((e.target as HTMLInputElement).value, 10);
-		if (!isNaN(val)) {
-			bpm = Math.max(20, Math.min(300, val));
-			metronome?.setBpm(bpm);
-		}
+		if (!isNaN(val)) applyBpm(val);
 	}
 
 	function nudge(delta: number) {
-		bpm = Math.max(20, Math.min(300, bpm + delta));
-		metronome?.setBpm(bpm);
+		applyBpm(bpm + delta);
+	}
+
+	function reset() {
+		if (nativeBpm !== undefined) applyBpm(nativeBpm);
 	}
 </script>
 
@@ -90,5 +114,16 @@
 			class="w-7 h-7 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-300 text-base leading-none transition flex items-center justify-center"
 		>+</button>
 		<span class="text-zinc-400 text-xs">BPM</span>
+
+		{#if nativeBpm !== undefined}
+			<span class="text-zinc-600 text-xs ml-1">♩={nativeBpm}</span>
+			{#if isModified}
+				<button
+					onclick={reset}
+					title="Reset to track tempo"
+					class="text-zinc-500 hover:text-amber-400 text-xs transition"
+				>↺</button>
+			{/if}
+		{/if}
 	</div>
 </div>
