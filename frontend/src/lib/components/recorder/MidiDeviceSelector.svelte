@@ -11,11 +11,13 @@
 
 	let devices = $state<MidiDevice[]>([]);
 	let supported = $state(true);
+	let secureContext = $state(true);
 	let loading = $state(true);
 
 	$effect(() => {
 		if (!navigator.requestMIDIAccess) {
 			supported = false;
+			secureContext = window.isSecureContext;
 			loading = false;
 			return;
 		}
@@ -31,9 +33,16 @@
 	<label class="text-sm text-zinc-400 font-medium" for="midi-device">MIDI Input Device</label>
 
 	{#if !supported}
-		<p class="text-amber-400 text-sm">
-			Web MIDI API is not supported in this browser. Please use Chrome or Edge.
-		</p>
+		{#if !secureContext}
+			<p class="text-amber-400 text-sm">
+				Web MIDI API requires HTTPS. Open the app over <code class="font-mono">https://</code> or
+				access it via <code class="font-mono">localhost</code>.
+			</p>
+		{:else}
+			<p class="text-amber-400 text-sm">
+				Web MIDI API is not supported in this browser. Please use Chrome or Edge.
+			</p>
+		{/if}
 	{:else if loading}
 		<p class="text-zinc-500 text-sm">Scanning for MIDI devices…</p>
 	{:else if devices.length === 0}

@@ -16,10 +16,14 @@
 	let submitting = $state(false);
 	let submitError = $state('');
 	let activeMetronome = $state<import('$lib/midi/metronome').Metronome | null>(null);
+	let currentBpm = $state(Math.round(track.practice_bpm ?? track.bpm));
+
+	const previewSpeed = $derived(currentBpm / track.bpm);
 
 	let saveBpmTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function handleBpmChange(newBpm: number) {
+		currentBpm = newBpm;
 		if (saveBpmTimer) clearTimeout(saveBpmTimer);
 		saveBpmTimer = setTimeout(() => {
 			// Save null when the user has reset back to the track's native tempo.
@@ -71,7 +75,7 @@
 					{track.note_count} notes · {formatDuration(track.duration_ms)} · {track.filename}
 				</p>
 			</div>
-			<PlayButton hits={track.notes} label="Preview Track" metronome={activeMetronome} />
+			<PlayButton hits={track.notes} label="Preview Track" metronome={activeMetronome} speed={previewSpeed} />
 		</div>
 	</div>
 

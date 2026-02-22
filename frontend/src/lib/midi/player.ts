@@ -165,7 +165,7 @@ export interface Player {
 	stop(): void;
 }
 
-export function createPlayer(hits: PlayableHit[]): Player {
+export function createPlayer(hits: PlayableHit[], speed = 1): Player {
 	let ctx: AudioContext | null = null;
 	let endTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -187,7 +187,7 @@ export function createPlayer(hits: PlayableHit[]): Player {
 			const t0 = ctx.currentTime;
 
 			for (const hit of sorted) {
-				scheduleHit(ctx, master, noiseBuffer, hit.note_number, hit.velocity, t0 + hit.time_ms / 1000);
+				scheduleHit(ctx, master, noiseBuffer, hit.note_number, hit.velocity, t0 + hit.time_ms / speed / 1000);
 			}
 
 			endTimer = setTimeout(
@@ -195,7 +195,7 @@ export function createPlayer(hits: PlayableHit[]): Player {
 					this.stop();
 					onEnded?.();
 				},
-				duration + 600
+				duration / speed + 600
 			);
 		},
 		stop() {

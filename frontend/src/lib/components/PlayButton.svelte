@@ -5,12 +5,15 @@
 	let {
 		hits,
 		label = 'Play',
-		metronome = undefined
+		metronome = undefined,
+		speed = 1
 	}: {
 		hits: PlayableHit[];
 		label?: string;
 		/** When provided, playback starts on the next bar-1 beat of this metronome. */
 		metronome?: Metronome;
+		/** Playback speed ratio relative to the track's native tempo. 0.5 = half speed, 2 = double. */
+		speed?: number;
 	} = $props();
 
 	let playing = $state(false);
@@ -19,7 +22,7 @@
 	let waitTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function startPlayer() {
-		player = createPlayer(hits);
+		player = createPlayer(hits, speed);
 		player.play(() => {
 			player = null;
 			playing = false;
