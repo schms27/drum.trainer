@@ -10,6 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+
       - name: Log in to Codeberg registry
         uses: docker/login-action@v3
         with:
@@ -38,6 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
 
       - name: Log in to Codeberg registry
         uses: docker/login-action@v3
