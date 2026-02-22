@@ -24,7 +24,7 @@ services:
       retries: 10
 
   backend:
-    image: codeberg.org/${CODEBERG_USER}/drum-trainer-backend:latest
+    image: codeberg.org/trashtr00per/drum-trainer-backend:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -35,7 +35,7 @@ services:
       - data:/data
 
   frontend:
-    image: codeberg.org/${CODEBERG_USER}/drum-trainer-frontend:latest
+    image: codeberg.org/trashtr00per/drum-trainer-frontend:latest
     restart: unless-stopped
     depends_on:
       - backend
