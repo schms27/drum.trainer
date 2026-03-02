@@ -24,13 +24,13 @@ var DrumMap = map[int]string{
 	51: "Ride", // Ride Cymbal 1
 	53: "Ride", // Ride Bell
 	59: "Ride", // Ride Cymbal 2
-	// Toms
-	41: "Tom", // Low Floor Tom
-	43: "Tom", // High Floor Tom
-	45: "Tom", // Low Tom
-	47: "Tom", // Low-Mid Tom
-	48: "Tom", // Hi-Mid Tom
-	50: "Tom", // High Tom
+	// Toms (four distinct levels by pitch)
+	50: "Tom (high)",  // High Tom
+	47: "Tom (mid)",   // Low-Mid Tom
+	48: "Tom (mid)",   // Hi-Mid Tom
+	43: "Tom (low)",   // High Floor Tom
+	45: "Tom (low)",   // Low Tom
+	41: "Tom (floor)", // Low Floor Tom
 }
 
 // InstrumentGroup returns the group name for a given GM drum note number.

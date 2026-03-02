@@ -7,8 +7,10 @@
 		42: 'Hi-Hat (closed)', 44: 'Hi-Hat (pedal)', 46: 'Hi-Hat (open)',
 		49: 'Crash 1', 57: 'Crash 2',
 		51: 'Ride', 53: 'Ride Bell', 59: 'Ride 2',
-		41: 'Tom (lo floor)', 43: 'Tom (hi floor)', 45: 'Tom (low)',
-		47: 'Tom (lo-mid)', 48: 'Tom (hi-mid)', 50: 'Tom (high)'
+		50: 'Tom (high)',
+		47: 'Tom (mid)', 48: 'Tom (mid)',
+		43: 'Tom (low)', 45: 'Tom (low)',
+		41: 'Tom (floor)'
 	};
 
 	let {

@@ -46,7 +46,7 @@
 		66: 'Low Timbale'
 	};
 
-	const INSTRUMENTS = ['Bass Drum', 'Snare', 'Hi-Hat', 'Crash', 'Ride', 'Tom', 'Other'];
+	const INSTRUMENTS = ['Bass Drum', 'Snare', 'Hi-Hat', 'Crash', 'Ride', 'Tom (high)', 'Tom (mid)', 'Tom (low)', 'Tom (floor)', 'Other'];
 
 	async function handleSave() {
 		saving = true;
