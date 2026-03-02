@@ -117,19 +117,10 @@
 
 	<svg viewBox="0 0 {SVG_W} {SVG_H}" class="w-full min-w-[400px]" aria-label="Live hit timeline">
 		<defs>
-			<!-- Fade the track area at both horizontal edges so circles don't pop in/out abruptly. -->
-			<linearGradient id="htl-fade" x1="0" y1="0" x2="1" y2="0">
-				<stop offset="0" stop-color="white" stop-opacity="0" />
-				<stop offset="0.07" stop-color="white" stop-opacity="1" />
-				<stop offset="0.93" stop-color="white" stop-opacity="1" />
-				<stop offset="1" stop-color="white" stop-opacity="0" />
-			</linearGradient>
-			<mask id="htl-mask">
-				<!-- Label column is always fully visible. -->
-				<rect x={0} y={0} width={LABEL_W} height={SVG_H} fill="white" />
-				<!-- Track area fades at both edges. -->
-				<rect x={LABEL_W} y={0} width={TRACK_W} height={SVG_H} fill="url(#htl-fade)" />
-			</mask>
+			<!-- Clip time-positioned content to the track area so it never bleeds into the label column. -->
+			<clipPath id="htl-track-clip">
+				<rect x={LABEL_W} y={0} width={TRACK_W} height={SVG_H} />
+			</clipPath>
 		</defs>
 
 		<!-- ── Row backgrounds & labels (not masked so they're always crisp) ── -->
@@ -156,8 +147,8 @@
 		<!-- Label-column divider -->
 		<line x1={LABEL_W} y1={0} x2={LABEL_W} y2={SVG_H} stroke="#52525b" />
 
-		<!-- ── All time-positioned content (masked for edge fade) ── -->
-		<g mask="url(#htl-mask)">
+		<!-- ── All time-positioned content (clipped to track area) ── -->
+		<g clip-path="url(#htl-track-clip)">
 			<!-- Past-region shade -->
 			<rect
 				x={LABEL_W}
