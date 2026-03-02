@@ -49,6 +49,7 @@
 	<TimelineView
 		targetNotes={track.notes}
 		matchedHits={score.matched_hits}
+		ghostHits={score.ghost_hits}
 		breakdown={score.by_instrument}
 		durationMs={track.duration_ms}
 	/>

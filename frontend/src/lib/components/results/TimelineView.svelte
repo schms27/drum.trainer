@@ -1,19 +1,22 @@
 <script lang="ts">
-	import type { MatchedHit, InstrumentBreakdown } from '$lib/types/session';
+	import type { MatchedHit, GhostHit, InstrumentBreakdown } from '$lib/types/session';
 	import type { NoteEvent } from '$lib/types/track';
 
 	let {
 		targetNotes,
 		matchedHits,
+		ghostHits,
 		breakdown,
 		durationMs
 	}: {
 		targetNotes: NoteEvent[];
 		matchedHits: MatchedHit[] | null;
+		ghostHits: GhostHit[] | null;
 		breakdown: InstrumentBreakdown[] | null;
 		durationMs: number;
 	} = $props();
 	const safeHits = $derived(matchedHits ?? []);
+	const safeGhosts = $derived(ghostHits ?? []);
 	const safeBreakdown = $derived(breakdown ?? []);
 
 	const WIDTH = 680;
@@ -32,16 +35,6 @@
 	function xOf(ms: number) {
 		return LABEL_W + ms / msPerPx;
 	}
-
-	// Build a lookup: instrument → set of matched recorded times (for coloring)
-	const matchedMap = $derived(() => {
-		const m = new Map<string, Set<number>>();
-		for (const h of safeHits) {
-			if (!m.has(h.instrument)) m.set(h.instrument, new Set());
-			m.get(h.instrument)!.add(h.recorded_time_ms);
-		}
-		return m;
-	});
 
 	function rowY(i: number) {
 		return MARGIN.top + i * ROW_H + ROW_H / 2;
@@ -117,11 +110,29 @@
 				{/if}
 			{/each}
 
+			<!-- Ghost hits: hollow red circles -->
+			{#each safeGhosts as ghost}
+				{@const gi = groups.indexOf(ghost.instrument)}
+				{#if gi >= 0}
+					<circle
+						cx={xOf(ghost.recorded_time_ms)}
+						cy={rowY(gi)}
+						r={DOT_R - 1}
+						fill="none"
+						stroke="#f87171"
+						stroke-width="1.5"
+						opacity="0.85"
+					>
+						<title>{ghost.instrument} | ghost note</title>
+					</circle>
+				{/if}
+			{/each}
+
 			<!-- Label column divider -->
 			<line x1={LABEL_W} y1={0} x2={LABEL_W} y2={svgH} stroke="#52525b" />
 		</svg>
 
-		<div class="flex gap-5 mt-3 text-xs text-zinc-500 justify-center">
+		<div class="flex flex-wrap gap-5 mt-3 text-xs text-zinc-500 justify-center">
 			<span>
 				<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
 					<circle cx="5" cy="5" r="4" fill="none" stroke="#6366f1" stroke-width="1.5"/>
@@ -141,6 +152,11 @@
 				<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
 					<circle cx="5" cy="5" r="3" fill="#f87171"/>
 				</svg>Late/Early
+			</span>
+			<span>
+				<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
+					<circle cx="5" cy="5" r="3" fill="none" stroke="#f87171" stroke-width="1.5"/>
+				</svg>Ghost
 			</span>
 		</div>
 	{/if}

@@ -23,6 +23,12 @@ export interface InstrumentBreakdown {
 	std_offset_ms: number | null;
 }
 
+export interface GhostHit {
+	recorded_time_ms: number;
+	note_number: number;
+	instrument: string;
+}
+
 export interface ScoreResult {
 	hit_rate: number;
 	miss_rate: number;
@@ -31,6 +37,7 @@ export interface ScoreResult {
 	std_offset_ms: number;
 	by_instrument: InstrumentBreakdown[];
 	matched_hits: MatchedHit[];
+	ghost_hits: GhostHit[];
 }
 
 export interface Session {

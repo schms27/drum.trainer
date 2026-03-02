@@ -48,6 +48,7 @@ func Score(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, in
 
 	var (
 		allMatchedHits []models.MatchedHit
+		allGhostHits   []models.GhostHit
 		allOffsets     []float64
 		totalTargets   int
 		totalMatched   int
@@ -115,11 +116,16 @@ func Score(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, in
 			}
 		}
 
-		// Count ghost hits.
+		// Collect ghost hits (unmatched recorded hits).
 		groupGhosts := 0
-		for _, used := range usedHit {
+		for k, used := range usedHit {
 			if !used {
 				groupGhosts++
+				allGhostHits = append(allGhostHits, models.GhostHit{
+					RecordedTimeMs: hits[k].TimeMs,
+					NoteNumber:     hits[k].NoteNumber,
+					Instrument:     group,
+				})
 			}
 		}
 		totalGhosts += groupGhosts
@@ -159,6 +165,7 @@ func Score(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, in
 		StdOffsetMs:  globalStd,
 		ByInstrument: byInstrument,
 		MatchedHits:  allMatchedHits,
+		GhostHits:    allGhostHits,
 	}
 }
 

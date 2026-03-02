@@ -25,6 +25,13 @@ type InstrumentBreakdown struct {
 	StdOffsetMs  *float64 `json:"std_offset_ms"` // nil if no matches
 }
 
+// GhostHit is a recorded hit that did not match any target note.
+type GhostHit struct {
+	RecordedTimeMs float64 `json:"recorded_time_ms"`
+	NoteNumber     int     `json:"note_number"`
+	Instrument     string  `json:"instrument"`
+}
+
 // MatchedHit is a target note paired with the closest recorded hit.
 type MatchedHit struct {
 	TargetTimeMs   float64 `json:"target_time_ms"`
@@ -43,6 +50,7 @@ type ScoreResult struct {
 	StdOffsetMs  float64               `json:"std_offset_ms"`
 	ByInstrument []InstrumentBreakdown `json:"by_instrument"`
 	MatchedHits  []MatchedHit          `json:"matched_hits"`
+	GhostHits    []GhostHit            `json:"ghost_hits"`
 }
 
 // SessionSummary is a lightweight session row used in list responses.
