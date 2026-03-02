@@ -5,7 +5,8 @@
       "Bash(go build:*)",
       "Bash(npm install:*)",
       "Bash(npx svelte-kit sync:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

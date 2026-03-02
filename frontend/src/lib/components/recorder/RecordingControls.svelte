@@ -1,14 +1,20 @@
 <script lang="ts">
 	import { createRecorder, type Recorder } from '$lib/midi/recorder';
 	import type { RecordedHit } from '$lib/types/session';
+	import type { NoteEvent } from '$lib/types/track';
 	import LiveEventFeed from './LiveEventFeed.svelte';
+	import HitTimeline from './HitTimeline.svelte';
 
 	let {
 		deviceId,
-		onFinished
+		onFinished,
+		expectedHits = [],
+		timeScale = 1
 	}: {
 		deviceId: string;
 		onFinished: (hits: RecordedHit[], startedAt: string, endedAt: string) => void;
+		expectedHits?: NoteEvent[];
+		timeScale?: number;
 	} = $props();
 
 	type State = 'idle' | 'waiting' | 'recording' | 'stopping';
@@ -20,6 +26,10 @@
 	let startedAt = '';
 	let pollInterval: ReturnType<typeof setInterval>;
 
+	// Wall-clock ms when the first hit starts the clock — used to advance the timeline.
+	let recordingStartWallMs = 0;
+	let currentTimeMs = $state(0);
+
 	async function start() {
 		if (!deviceId) {
 			error = 'Select a MIDI device first.';
@@ -30,6 +40,7 @@
 			recorder = await createRecorder(deviceId, {
 				onStarted() {
 					startedAt = new Date().toISOString();
+					recordingStartWallMs = Date.now();
 					recorderState = 'recording';
 				}
 			});
@@ -41,9 +52,12 @@
 		recorder.arm();
 		recorderState = 'waiting';
 
-		// Poll for live display every 80ms.
+		// Poll for live display every 80ms — also advances the timeline clock.
 		pollInterval = setInterval(() => {
 			if (recorder) liveHits = recorder.hits;
+			if (recorderState === 'recording' && recordingStartWallMs > 0) {
+				currentTimeMs = Date.now() - recordingStartWallMs;
+			}
 		}, 80);
 	}
 
@@ -73,6 +87,8 @@
 		recorder = null;
 		liveHits = [];
 		startedAt = '';
+		currentTimeMs = 0;
+		recordingStartWallMs = 0;
 		recorderState = 'idle';
 		error = '';
 	}
@@ -121,6 +137,13 @@
 	{#if error}
 		<p class="text-red-400 text-sm">{error}</p>
 	{/if}
+
+	<HitTimeline
+		{expectedHits}
+		actualHits={liveHits}
+		{currentTimeMs}
+		{timeScale}
+	/>
 
 	<LiveEventFeed hits={liveHits} />
 </div>

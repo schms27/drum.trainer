@@ -98,7 +98,12 @@
 		{#if submitting}
 			<p class="text-zinc-400 text-sm animate-pulse">Calculating your score…</p>
 		{:else}
-			<RecordingControls deviceId={selectedDeviceId} onFinished={handleFinished} />
+			<RecordingControls
+				deviceId={selectedDeviceId}
+				onFinished={handleFinished}
+				expectedHits={track.notes}
+				timeScale={track.bpm / currentBpm}
+			/>
 		{/if}
 		{#if submitError}
 			<p class="text-red-400 text-sm mt-3">{submitError}</p>
