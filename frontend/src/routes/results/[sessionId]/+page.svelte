@@ -52,5 +52,7 @@
 		ghostHits={score.ghost_hits}
 		breakdown={score.by_instrument}
 		durationMs={track.duration_ms}
+		bpm={track.bpm}
+		timeSigNumerator={track.time_sig_numerator}
 	/>
 </div>

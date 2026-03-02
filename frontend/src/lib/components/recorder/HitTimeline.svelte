@@ -35,13 +35,17 @@
 		actualHits,
 		currentTimeMs = 0,
 		timeScale = 1,
-		windowMs = 8000
+		windowMs = 8000,
+		bpm = 120,
+		timeSigNumerator = 4
 	}: {
 		expectedHits: NoteEvent[];
 		actualHits: RecordedHit[];
 		currentTimeMs: number;
 		timeScale?: number;
 		windowMs?: number;
+		bpm?: number;
+		timeSigNumerator?: number;
 	} = $props();
 
 	// Scale expected hit times to the current practice tempo.
@@ -97,11 +101,18 @@
 		)
 	);
 
-	const gridTicks = $derived(
+	// Beat/bar grid in the scrolling coordinate space.
+	// At practice tempo, beat interval = 60000/bpm * timeScale ms (same scale as scaledExpected).
+	const beatMs = $derived(bpm > 0 ? (60000 / bpm) * timeScale : 0);
+	const beatTicks = $derived(
 		(() => {
-			const first = Math.ceil(Math.max(0, leftMs) / 1000) * 1000;
-			const ticks: number[] = [];
-			for (let t = first; t <= rightMs; t += 1000) ticks.push(t);
+			if (beatMs <= 0) return [];
+			const first = Math.max(0, Math.floor((leftMs - EDGE_BUFFER_MS) / beatMs));
+			const last = Math.ceil((rightMs + EDGE_BUFFER_MS) / beatMs);
+			const ticks: { ms: number; isBar: boolean }[] = [];
+			for (let n = first; n <= last; n++) {
+				ticks.push({ ms: n * beatMs, isBar: n % timeSigNumerator === 0 });
+			}
 			return ticks;
 		})()
 	);
@@ -162,20 +173,18 @@
 				opacity="0.2"
 			/>
 
-			<!-- Second grid lines + time labels -->
-			{#each gridTicks as tick}
-				{@const x = timeToX(tick)}
+			<!-- Beat / bar grid lines -->
+			{#each beatTicks as tick}
+				{@const x = timeToX(tick.ms)}
 				<line
 					x1={x}
 					y1={MARGIN_TOP}
 					x2={x}
 					y2={MARGIN_TOP + LANES.length * ROW_H}
-					stroke="#3f3f46"
-					stroke-width="0.5"
+					stroke={tick.isBar ? '#52525b' : '#3f3f46'}
+					stroke-width={tick.isBar ? 1 : 0.5}
+					opacity={tick.isBar ? 0.9 : 0.5}
 				/>
-				<text x={x} y={SVG_H - 4} text-anchor="middle" fill="#52525b" font-size="8"
-					>{(tick / 1000).toFixed(0)}s</text
-				>
 			{/each}
 
 			<!-- Target notes — open circles (indigo), same style as results view -->

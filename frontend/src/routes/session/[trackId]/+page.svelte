@@ -103,6 +103,8 @@
 				onFinished={handleFinished}
 				expectedHits={track.notes}
 				timeScale={track.bpm / currentBpm}
+				bpm={track.bpm}
+				timeSigNumerator={track.time_sig_numerator}
 			/>
 		{/if}
 		{#if submitError}

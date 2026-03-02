@@ -9,12 +9,16 @@
 		deviceId,
 		onFinished,
 		expectedHits = [],
-		timeScale = 1
+		timeScale = 1,
+		bpm = 120,
+		timeSigNumerator = 4
 	}: {
 		deviceId: string;
 		onFinished: (hits: RecordedHit[], startedAt: string, endedAt: string) => void;
 		expectedHits?: NoteEvent[];
 		timeScale?: number;
+		bpm?: number;
+		timeSigNumerator?: number;
 	} = $props();
 
 	type State = 'idle' | 'waiting' | 'recording' | 'stopping';
@@ -143,6 +147,8 @@
 		actualHits={liveHits}
 		{currentTimeMs}
 		{timeScale}
+		{bpm}
+		{timeSigNumerator}
 	/>
 
 	<LiveEventFeed hits={liveHits} />

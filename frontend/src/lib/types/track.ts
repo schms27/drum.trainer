@@ -14,6 +14,7 @@ export interface Track {
 	note_count: number;
 	ppq: number;
 	bpm: number;
+	time_sig_numerator: number;
 	practice_bpm: number | null;
 	created_at: string;
 }

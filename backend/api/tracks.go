@@ -69,14 +69,15 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	track := &models.Track{
-		Name:       parsed.Name,
-		Filename:   header.Filename,
-		FilePath:   filePath,
-		FileSize:   header.Size,
-		DurationMs: parsed.DurationMs,
-		NoteCount:  len(parsed.Notes),
-		PPQ:        parsed.PPQ,
-		BPM:        parsed.BPM,
+		Name:             parsed.Name,
+		Filename:         header.Filename,
+		FilePath:         filePath,
+		FileSize:         header.Size,
+		DurationMs:       parsed.DurationMs,
+		NoteCount:        len(parsed.Notes),
+		PPQ:              parsed.PPQ,
+		BPM:              parsed.BPM,
+		TimeSigNumerator: parsed.TimeSigNumerator,
 	}
 
 	trackID, err := dbpkg.InsertTrack(h.db, track, parsed.Notes)

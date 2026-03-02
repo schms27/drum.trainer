@@ -13,11 +13,12 @@ import (
 
 // ParseResult holds the parsed output of an SMF MIDI file.
 type ParseResult struct {
-	Notes      []models.NoteEvent
-	DurationMs float64
-	PPQ        int
-	BPM        float64
-	Name       string // from TrackName meta event or filename fallback
+	Notes            []models.NoteEvent
+	DurationMs       float64
+	PPQ              int
+	BPM              float64
+	TimeSigNumerator int    // beats per bar; defaults to 4 if no time sig event found
+	Name             string // from TrackName meta event or filename fallback
 }
 
 // ParseMIDIFile parses raw SMF MIDI bytes and returns all NoteOn events on the
@@ -38,10 +39,11 @@ func ParseMIDIFile(data []byte, filename string, drumChannel uint8) (*ParseResul
 	ppq := int(mt)
 
 	var (
-		notes       []models.NoteEvent
-		trackName   string
-		maxTickSeen int64
-		bpm         = 120.0 // MIDI default when no tempo event is present
+		notes            []models.NoteEvent
+		trackName        string
+		maxTickSeen      int64
+		bpm              = 120.0 // MIDI default when no tempo event is present
+		timeSigNumerator = 4     // MIDI default when no time signature event is present
 	)
 
 	// Iterate all tracks and accumulate absolute tick positions.
@@ -68,6 +70,14 @@ func ParseMIDIFile(data []byte, filename string, drumChannel uint8) (*ParseResul
 				var t float64
 				if msg.GetMetaTempo(&t) && t > 0 {
 					bpm = t
+				}
+			}
+
+			// Capture the first time signature event.
+			if timeSigNumerator == 4 {
+				var num, denom uint8
+				if msg.GetMetaMeter(&num, &denom) && num > 0 {
+					timeSigNumerator = int(num)
 				}
 			}
 
@@ -119,10 +129,11 @@ func ParseMIDIFile(data []byte, filename string, drumChannel uint8) (*ParseResul
 	}
 
 	return &ParseResult{
-		Notes:      notes,
-		DurationMs: durationMs,
-		PPQ:        ppq,
-		BPM:        bpm,
-		Name:       trackName,
+		Notes:            notes,
+		DurationMs:       durationMs,
+		PPQ:              ppq,
+		BPM:              bpm,
+		TimeSigNumerator: timeSigNumerator,
+		Name:             trackName,
 	}, nil
 }

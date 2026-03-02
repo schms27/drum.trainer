@@ -11,9 +11,10 @@ type Track struct {
 	FileSize   int64     `json:"file_size"`
 	DurationMs float64   `json:"duration_ms"`
 	NoteCount  int       `json:"note_count"`
-	PPQ         int      `json:"ppq"`
-	BPM         float64  `json:"bpm"`
-	PracticeBPM *float64 `json:"practice_bpm"` // nil = use native BPM
+	PPQ              int      `json:"ppq"`
+	BPM              float64  `json:"bpm"`
+	TimeSigNumerator int      `json:"time_sig_numerator"` // beats per bar (e.g. 4 for 4/4, 3 for 3/4)
+	PracticeBPM      *float64 `json:"practice_bpm"`       // nil = use native BPM
 	CreatedAt   time.Time `json:"created_at"`
 }
 

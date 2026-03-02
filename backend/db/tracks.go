@@ -18,10 +18,10 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 
 	var trackID int64
 	err = tx.QueryRow(
-		Rebind(`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
+		Rebind(`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
 		track.Name, track.Filename, track.FilePath,
-		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM,
+		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM, track.TimeSigNumerator,
 	).Scan(&trackID)
 	if err != nil {
 		return 0, fmt.Errorf("insert track: %w", err)
@@ -49,7 +49,7 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 // GetTrack returns a track by ID (without notes).
 func GetTrack(db *sql.DB, id int64) (*models.Track, error) {
 	row := db.QueryRow(
-		Rebind(`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, practice_bpm, created_at
+		Rebind(`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at
 		 FROM tracks WHERE id = ?`), id,
 	)
 	return scanTrack(row)
@@ -80,7 +80,7 @@ func GetTrackNotes(db *sql.DB, trackID int64) ([]models.NoteEvent, error) {
 // ListTracks returns all tracks without notes, newest first.
 func ListTracks(db *sql.DB) ([]models.Track, error) {
 	rows, err := db.Query(
-		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, practice_bpm, created_at
+		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at
 		 FROM tracks ORDER BY id DESC`,
 	)
 	if err != nil {
@@ -211,7 +211,7 @@ func scanTrack(s scanner) (*models.Track, error) {
 	var ct scanTime
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
-		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &practiceBPM, &ct,
+		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &ct,
 	)
 	if err != nil {
 		return nil, err
