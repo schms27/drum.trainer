@@ -12,11 +12,13 @@ export async function getTrack(id: number): Promise<TrackWithNotes> {
 
 export async function uploadTrack(
 	file: File,
+	channel: number,
 	onProgress?: (pct: number) => void
 ): Promise<TrackWithNotes> {
 	return new Promise((resolve, reject) => {
 		const form = new FormData();
 		form.append('file', file);
+		form.append('channel', String(channel));
 
 		const xhr = new XMLHttpRequest();
 		xhr.open('POST', '/api/v1/tracks');

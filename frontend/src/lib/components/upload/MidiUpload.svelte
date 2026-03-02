@@ -3,9 +3,11 @@
 	import type { TrackWithNotes } from '$lib/types/track';
 
 	let {
-		onUploaded
+		onUploaded,
+		channel = 10
 	}: {
 		onUploaded: (track: TrackWithNotes) => void;
+		channel?: number;
 	} = $props();
 
 	let dragging = $state(false);
@@ -22,7 +24,7 @@
 		uploading = true;
 		progress = 0;
 		try {
-			const track = await uploadTrack(file, (pct) => (progress = pct));
+			const track = await uploadTrack(file, channel, (pct) => (progress = pct));
 			onUploaded(track);
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : 'Upload failed';

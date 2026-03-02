@@ -20,10 +20,11 @@ type ParseResult struct {
 	Name       string // from TrackName meta event or filename fallback
 }
 
-// ParseMIDIFile parses raw SMF MIDI bytes and returns all channel-10 NoteOn events
-// converted to millisecond timestamps. Multi-tempo maps are handled correctly via
+// ParseMIDIFile parses raw SMF MIDI bytes and returns all NoteOn events on the
+// given drumChannel (0-indexed, so pass 9 for MIDI channel 10) converted to
+// millisecond timestamps. Multi-tempo maps are handled correctly via
 // smf.SMF.TimeAt() which accumulates tempo changes.
-func ParseMIDIFile(data []byte, filename string) (*ParseResult, error) {
+func ParseMIDIFile(data []byte, filename string, drumChannel uint8) (*ParseResult, error) {
 	s, err := smf.ReadFrom(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("parse SMF: %w", err)
@@ -70,12 +71,12 @@ func ParseMIDIFile(data []byte, filename string) (*ParseResult, error) {
 				}
 			}
 
-			// We only care about channel 9 (= MIDI channel 10, 0-indexed).
+			// Filter to the requested drum channel (0-indexed).
 			var channel, key, vel uint8
 			if !msg.GetNoteOn(&channel, &key, &vel) {
 				continue
 			}
-			if channel != 9 {
+			if channel != drumChannel {
 				continue
 			}
 			// NoteOn with velocity 0 is a NoteOff — skip it.
@@ -98,7 +99,7 @@ func ParseMIDIFile(data []byte, filename string) (*ParseResult, error) {
 	}
 
 	if len(notes) == 0 {
-		return nil, fmt.Errorf("no channel-10 (drum) notes found in MIDI file")
+		return nil, fmt.Errorf("no notes found on MIDI channel %d in file", int(drumChannel)+1)
 	}
 
 	// Sort by time (tracks may interleave).

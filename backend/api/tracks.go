@@ -42,8 +42,19 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Read optional channel parameter (1–16, display-numbered). Default to 10 (GM drums).
+	drumChannel := uint8(9) // 0-indexed
+	if ch := r.FormValue("channel"); ch != "" {
+		n, err := strconv.Atoi(ch)
+		if err != nil || n < 1 || n > 16 {
+			writeError(w, http.StatusBadRequest, "channel must be between 1 and 16")
+			return
+		}
+		drumChannel = uint8(n - 1)
+	}
+
 	// Parse MIDI.
-	parsed, err := midipkg.ParseMIDIFile(data, header.Filename)
+	parsed, err := midipkg.ParseMIDIFile(data, header.Filename, drumChannel)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
