@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background pill -->
+  <rect width="32" height="32" rx="7" fill="#18181b"/>
+
+  <!-- Drum body: side walls -->
+  <line x1="7" y1="13" x2="7" y2="21" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+  <line x1="25" y1="13" x2="25" y2="21" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Drum bottom rim -->
+  <ellipse cx="16" cy="21" rx="9" ry="3" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.8"/>
+
+  <!-- Drum top rim (hit surface) -->
+  <ellipse cx="16" cy="13" rx="9" ry="3" fill="#27272a" stroke="#f59e0b" stroke-width="1.8"/>
+
+  <!-- Drumsticks -->
+  <line x1="11" y1="4"  x2="15" y2="12" stroke="#e4e4e7" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="21" y1="4"  x2="17" y2="12" stroke="#e4e4e7" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
