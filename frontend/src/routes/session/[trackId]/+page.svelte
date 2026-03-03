@@ -105,6 +105,7 @@
 				timeScale={track.bpm / currentBpm}
 				bpm={track.bpm}
 				timeSigNumerator={track.time_sig_numerator}
+			durationMs={track.duration_ms}
 			/>
 		{/if}
 		{#if submitError}

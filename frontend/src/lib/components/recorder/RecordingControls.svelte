@@ -11,7 +11,8 @@
 		expectedHits = [],
 		timeScale = 1,
 		bpm = 120,
-		timeSigNumerator = 4
+		timeSigNumerator = 4,
+		durationMs = 0
 	}: {
 		deviceId: string;
 		onFinished: (hits: RecordedHit[], startedAt: string, endedAt: string) => void;
@@ -19,7 +20,18 @@
 		timeScale?: number;
 		bpm?: number;
 		timeSigNumerator?: number;
+		durationMs?: number;
 	} = $props();
+
+	// Duration scaled to the current practice tempo.
+	const effectiveDurationMs = $derived(durationMs * timeScale);
+
+	function formatTime(ms: number): string {
+		const secs = Math.floor(ms / 1000);
+		const m = Math.floor(secs / 60);
+		const s = secs % 60;
+		return `${m}:${String(s).padStart(2, '0')}`;
+	}
 
 	type State = 'idle' | 'waiting' | 'recording' | 'stopping';
 
@@ -137,6 +149,22 @@
 			</button>
 		{/if}
 	</div>
+
+	{#if recorderState === 'recording' && effectiveDurationMs > 0}
+		{@const pct = Math.min((currentTimeMs / effectiveDurationMs) * 100, 100)}
+		<div class="flex flex-col gap-1">
+			<div class="flex justify-between text-xs text-zinc-400">
+				<span>{formatTime(currentTimeMs)} / {formatTime(effectiveDurationMs)}</span>
+				<span>{Math.round(pct)}%</span>
+			</div>
+			<div class="h-2 bg-zinc-700 rounded-full overflow-hidden">
+				<div
+					class="h-full bg-indigo-500 rounded-full transition-[width] duration-100"
+					style="width: {pct}%"
+				></div>
+			</div>
+		</div>
+	{/if}
 
 	{#if error}
 		<p class="text-red-400 text-sm">{error}</p>
