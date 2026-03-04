@@ -6,7 +6,7 @@
 	let { children } = $props();
 </script>
 
-{#if navigating}
+{#if navigating.to}
 	<div class="nav-loading-track">
 		<div class="nav-loading-bar"></div>
 	</div>
