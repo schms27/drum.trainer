@@ -40,7 +40,7 @@
 							{trackNames.get(session.track_id) ?? 'Unknown'}
 						</td>
 						<td class="py-3 pr-4 text-zinc-300">{formatDate(session.created_at)}</td>
-						<td class="py-3 pr-4 text-zinc-300 text-right">{session.hit_count}</td>
+						<td class="py-3 pr-4 text-zinc-300 text-right">{session.matched_count} / {session.target_count}</td>
 						<td class="py-3 pr-4 text-zinc-300 text-right">{formatHitRate(session.hit_rate)}</td>
 						<td class="py-3 pr-4 text-zinc-300 text-right">{formatOffset(session.avg_offset_ms)}</td>
 						<td class="py-3">

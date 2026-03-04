@@ -54,6 +54,8 @@ export interface SessionSummary {
 	id: number;
 	track_id: number;
 	hit_count: number;
+	matched_count: number;
+	target_count: number;
 	hit_rate: number;
 	avg_offset_ms: number;
 	created_at: string;

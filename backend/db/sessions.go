@@ -119,15 +119,19 @@ func GetSessionScore(db *sql.DB, sessionID int64) (*models.ScoreResult, error) {
 // ListSessions returns a lightweight list of sessions, optionally filtered by track.
 func ListSessions(db *sql.DB, trackID int64) ([]models.SessionSummary, error) {
 	query := `
-		SELECT s.id, s.track_id, s.hit_count, ss.hit_rate, ss.avg_offset_ms, s.created_at
+		SELECT s.id, s.track_id, s.hit_count,
+		       COALESCE(SUM(si.matched_count), 0), COALESCE(SUM(si.target_count), 0),
+		       ss.hit_rate, ss.avg_offset_ms, s.created_at
 		FROM sessions s
-		JOIN session_scores ss ON ss.session_id = s.id`
+		JOIN session_scores ss ON ss.session_id = s.id
+		LEFT JOIN session_instrument_scores si ON si.session_id = s.id`
 	args := []any{}
 
 	if trackID > 0 {
 		query += ` WHERE s.track_id = ?`
 		args = append(args, trackID)
 	}
+	query += ` GROUP BY s.id, s.track_id, s.hit_count, ss.hit_rate, ss.avg_offset_ms, s.created_at`
 	query += ` ORDER BY s.id DESC`
 
 	rows, err := db.Query(Rebind(query), args...)
@@ -140,7 +144,7 @@ func ListSessions(db *sql.DB, trackID int64) ([]models.SessionSummary, error) {
 	for rows.Next() {
 		var s models.SessionSummary
 		var ct scanTime
-		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.HitRate, &s.AvgOffsetMs, &ct); err != nil {
+		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.MatchedCount, &s.TargetCount, &s.HitRate, &s.AvgOffsetMs, &ct); err != nil {
 			return nil, err
 		}
 		s.CreatedAt = ct.T

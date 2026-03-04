@@ -55,12 +55,14 @@ type ScoreResult struct {
 
 // SessionSummary is a lightweight session row used in list responses.
 type SessionSummary struct {
-	ID          int64     `json:"id"`
-	TrackID     int64     `json:"track_id"`
-	HitCount    int       `json:"hit_count"`
-	HitRate     float64   `json:"hit_rate"`
-	AvgOffsetMs float64   `json:"avg_offset_ms"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           int64     `json:"id"`
+	TrackID      int64     `json:"track_id"`
+	HitCount     int       `json:"hit_count"`
+	MatchedCount int       `json:"matched_count"`
+	TargetCount  int       `json:"target_count"`
+	HitRate      float64   `json:"hit_rate"`
+	AvgOffsetMs  float64   `json:"avg_offset_ms"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // SessionWithScore is the full session + computed score, used in detail responses.
