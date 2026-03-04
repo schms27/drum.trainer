@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { listMidiInputs, type MidiDevice } from '$lib/midi/recorder';
 
+	const STORAGE_KEY = 'drum-trainer:default-midi-device';
+
 	let {
 		selectedId = $bindable(''),
 		onError
@@ -23,10 +25,18 @@
 		}
 		listMidiInputs().then((list) => {
 			devices = list;
-			if (list.length > 0 && !selectedId) selectedId = list[0].id;
+			if (list.length > 0 && !selectedId) {
+				const saved = localStorage.getItem(STORAGE_KEY);
+				selectedId = saved && list.some((d) => d.id === saved) ? saved : list[0].id;
+			}
 			loading = false;
 		});
 	});
+
+	function handleChange(e: Event) {
+		const id = (e.target as HTMLSelectElement).value;
+		localStorage.setItem(STORAGE_KEY, id);
+	}
 </script>
 
 <div class="flex flex-col gap-2">
@@ -51,6 +61,7 @@
 		<select
 			id="midi-device"
 			bind:value={selectedId}
+			onchange={handleChange}
 			class="bg-zinc-700 border border-zinc-600 text-white rounded-lg px-3 py-2 text-sm"
 		>
 			{#each devices as device (device.id)}
