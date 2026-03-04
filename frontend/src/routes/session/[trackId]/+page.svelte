@@ -47,6 +47,11 @@
 	);
 
 	async function handleFinished(hits: RecordedHit[], startedAt: string, endedAt: string) {
+		// Normalize hit times from practice-tempo space back to original-tempo space
+		// so the scorer compares against the unscaled MIDI target times.
+		const timeScale = track.bpm / currentBpm;
+		const scoringHits =
+			timeScale === 1 ? hits : hits.map((h) => ({ ...h, time_ms: h.time_ms / timeScale }));
 		submitting = true;
 		submitError = '';
 		try {
@@ -54,7 +59,7 @@
 				track_id: track.id,
 				started_at: startedAt,
 				ended_at: endedAt,
-				hits
+				hits: scoringHits
 			});
 			goto(`/results/${result.session.id}`);
 		} catch (e: unknown) {
