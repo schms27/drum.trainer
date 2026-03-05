@@ -1,4 +1,4 @@
-.PHONY: dev backend frontend build clean
+.PHONY: dev backend frontend build clean test
 
 ## Run both backend and frontend in parallel
 dev:
@@ -16,6 +16,11 @@ frontend:
 build:
 	cd frontend && npm run build
 	cd backend && go build -o drum-trainer .
+
+## Run all tests (Go + frontend)
+test:
+	cd backend && go test ./...
+	cd frontend && npm test
 
 ## Remove build artifacts
 clean:
