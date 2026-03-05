@@ -30,8 +30,10 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify track exists and load target notes.
-	_, err := dbpkg.GetTrack(h.db, req.TrackID)
+	user := UserFromContext(r.Context())
+
+	// Verify track exists and belongs to this user, then load target notes.
+	_, err := dbpkg.GetTrack(h.db, req.TrackID, user.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "track not found")
@@ -84,7 +86,7 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		instrMap[strconv.Itoa(note)] = group
 	}
 
-	sessionID, err := dbpkg.InsertSession(h.db, session, req.Hits, score, instrMap)
+	sessionID, err := dbpkg.InsertSession(h.db, session, req.Hits, score, instrMap, user.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save session")
 		return
@@ -99,6 +101,8 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/sessions
 func (h *sessionsHandler) list(w http.ResponseWriter, r *http.Request) {
+	user := UserFromContext(r.Context())
+
 	trackID := int64(0)
 	if s := r.URL.Query().Get("track_id"); s != "" {
 		var err error
@@ -109,7 +113,7 @@ func (h *sessionsHandler) list(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sessions, err := dbpkg.ListSessions(h.db, trackID)
+	sessions, err := dbpkg.ListSessions(h.db, user.ID, trackID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list sessions")
 		return
@@ -128,7 +132,8 @@ func (h *sessionsHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := dbpkg.GetSession(h.db, id)
+	user := UserFromContext(r.Context())
+	session, err := dbpkg.GetSession(h.db, id, user.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "session not found")

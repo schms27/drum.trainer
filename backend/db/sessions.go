@@ -10,7 +10,7 @@ import (
 )
 
 // InsertSession persists a session, its raw hits, and the computed score in one transaction.
-func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHit, score *models.ScoreResult, instrumentGroups map[string]string) (int64, error) {
+func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHit, score *models.ScoreResult, instrumentGroups map[string]string, userID int64) (int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
@@ -19,13 +19,14 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 
 	var sessionID int64
 	err = tx.QueryRow(
-		Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count)
-		 VALUES (?, ?, ?, ?, ?) RETURNING id`),
+		Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count, user_id)
+		 VALUES (?, ?, ?, ?, ?, ?) RETURNING id`),
 		session.TrackID,
 		session.StartedAt.UTC().Format(time.RFC3339),
 		session.EndedAt.UTC().Format(time.RFC3339),
 		session.DurationMs,
 		session.HitCount,
+		userID,
 	).Scan(&sessionID)
 	if err != nil {
 		return 0, fmt.Errorf("insert session: %w", err)
@@ -91,11 +92,11 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 	return sessionID, tx.Commit()
 }
 
-// GetSession returns a session's metadata by ID.
-func GetSession(db *sql.DB, id int64) (*models.Session, error) {
+// GetSession returns a session's metadata by ID scoped to the given user.
+func GetSession(db *sql.DB, id, userID int64) (*models.Session, error) {
 	row := db.QueryRow(
 		Rebind(`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at
-		 FROM sessions WHERE id = ?`), id,
+		 FROM sessions WHERE id = ? AND user_id = ?`), id, userID,
 	)
 	return scanSession(row)
 }
@@ -116,19 +117,20 @@ func GetSessionScore(db *sql.DB, sessionID int64) (*models.ScoreResult, error) {
 	return &score, nil
 }
 
-// ListSessions returns a lightweight list of sessions, optionally filtered by track.
-func ListSessions(db *sql.DB, trackID int64) ([]models.SessionSummary, error) {
+// ListSessions returns a lightweight list of sessions for a user, optionally filtered by track.
+func ListSessions(db *sql.DB, userID, trackID int64) ([]models.SessionSummary, error) {
 	query := `
 		SELECT s.id, s.track_id, s.hit_count,
 		       COALESCE(SUM(si.matched_count), 0), COALESCE(SUM(si.target_count), 0),
 		       ss.hit_rate, ss.avg_offset_ms, s.created_at
 		FROM sessions s
 		JOIN session_scores ss ON ss.session_id = s.id
-		LEFT JOIN session_instrument_scores si ON si.session_id = s.id`
-	args := []any{}
+		LEFT JOIN session_instrument_scores si ON si.session_id = s.id
+		WHERE s.user_id = ?`
+	args := []any{userID}
 
 	if trackID > 0 {
-		query += ` WHERE s.track_id = ?`
+		query += ` AND s.track_id = ?`
 		args = append(args, trackID)
 	}
 	query += ` GROUP BY s.id, s.track_id, s.hit_count, ss.hit_rate, ss.avg_offset_ms, s.created_at`

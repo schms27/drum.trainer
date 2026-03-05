@@ -12,6 +12,17 @@ type Config struct {
 	DatabaseURL     string
 	UploadDir       string
 	MaxUploadSizeMB int64
+
+	// OAuth providers.
+	GoogleClientID     string
+	GoogleClientSecret string
+	GitHubClientID     string
+	GitHubClientSecret string
+
+	// Auth.
+	SessionSecret string // used to sign CSRF state cookies
+	BaseURL       string // public base URL, e.g. "https://drums.example.com"
+	DevMode       bool   // relaxes Secure cookie flag for HTTP localhost
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -22,6 +33,15 @@ func Load() Config {
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
 		UploadDir:       getEnv("UPLOAD_DIR", "./data/uploads"),
 		MaxUploadSizeMB: getEnvInt64("MAX_UPLOAD_SIZE_MB", 16),
+
+		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		GitHubClientID:     os.Getenv("GITHUB_CLIENT_ID"),
+		GitHubClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+
+		SessionSecret: getEnv("SESSION_SECRET", "change-me-in-production"),
+		BaseURL:       getEnv("BASE_URL", "http://localhost:8080"),
+		DevMode:       os.Getenv("DEV_MODE") == "true",
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 
 // InsertTrack inserts a track row and all its notes inside a single transaction.
 // It returns the new track ID.
-func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int64, error) {
+func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent, userID int64) (int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
@@ -18,10 +18,10 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 
 	var trackID int64
 	err = tx.QueryRow(
-		Rebind(`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
+		Rebind(`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, user_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
 		track.Name, track.Filename, track.FilePath,
-		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM, track.TimeSigNumerator,
+		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM, track.TimeSigNumerator, userID,
 	).Scan(&trackID)
 	if err != nil {
 		return 0, fmt.Errorf("insert track: %w", err)
@@ -46,11 +46,11 @@ func InsertTrack(db *sql.DB, track *models.Track, notes []models.NoteEvent) (int
 	return trackID, tx.Commit()
 }
 
-// GetTrack returns a track by ID (without notes).
-func GetTrack(db *sql.DB, id int64) (*models.Track, error) {
+// GetTrack returns a track by ID scoped to the given user.
+func GetTrack(db *sql.DB, id, userID int64) (*models.Track, error) {
 	row := db.QueryRow(
 		Rebind(`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at
-		 FROM tracks WHERE id = ?`), id,
+		 FROM tracks WHERE id = ? AND user_id = ?`), id, userID,
 	)
 	return scanTrack(row)
 }
@@ -77,11 +77,12 @@ func GetTrackNotes(db *sql.DB, trackID int64) ([]models.NoteEvent, error) {
 	return notes, rows.Err()
 }
 
-// ListTracks returns all tracks without notes, newest first.
-func ListTracks(db *sql.DB) ([]models.Track, error) {
+// ListTracks returns all tracks for a user without notes, newest first.
+func ListTracks(db *sql.DB, userID int64) ([]models.Track, error) {
 	rows, err := db.Query(
-		`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at
-		 FROM tracks ORDER BY id DESC`,
+		Rebind(`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at
+		 FROM tracks WHERE user_id = ? ORDER BY id DESC`),
+		userID,
 	)
 	if err != nil {
 		return nil, err
@@ -100,8 +101,8 @@ func ListTracks(db *sql.DB) ([]models.Track, error) {
 }
 
 // DeleteTrack removes a track and all related data (sessions/notes cascade).
-func DeleteTrack(db *sql.DB, id int64) error {
-	res, err := db.Exec(Rebind(`DELETE FROM tracks WHERE id = ?`), id)
+func DeleteTrack(db *sql.DB, id, userID int64) error {
+	res, err := db.Exec(Rebind(`DELETE FROM tracks WHERE id = ? AND user_id = ?`), id, userID)
 	if err != nil {
 		return err
 	}
@@ -193,8 +194,8 @@ type scanner interface {
 
 // SetPracticeBPM persists the user's preferred practice tempo for a track.
 // Pass nil to revert to the track's native BPM.
-func SetPracticeBPM(db *sql.DB, trackID int64, bpm *float64) error {
-	res, err := db.Exec(Rebind(`UPDATE tracks SET practice_bpm = ? WHERE id = ?`), bpm, trackID)
+func SetPracticeBPM(db *sql.DB, trackID, userID int64, bpm *float64) error {
+	res, err := db.Exec(Rebind(`UPDATE tracks SET practice_bpm = ? WHERE id = ? AND user_id = ?`), bpm, trackID, userID)
 	if err != nil {
 		return err
 	}

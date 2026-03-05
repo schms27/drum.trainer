@@ -10,7 +10,8 @@
       "Bash(wc:*)",
       "Bash(go test:*)",
       "Bash(npm test:*)",
-      "Bash(make test:*)"
+      "Bash(make test:*)",
+      "Bash(go get:*)"
     ]
   }
 }

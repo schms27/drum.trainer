@@ -35,7 +35,7 @@ func main() {
 	}
 
 	maxBytes := cfg.MaxUploadSizeMB << 20 // MB → bytes
-	router := api.NewRouter(database, store, maxBytes)
+	router := api.NewRouter(database, store, maxBytes, cfg)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("drum-trainer backend listening on http://localhost%s", addr)

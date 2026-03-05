@@ -68,6 +68,8 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user := UserFromContext(r.Context())
+
 	track := &models.Track{
 		Name:             parsed.Name,
 		Filename:         header.Filename,
@@ -80,7 +82,7 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 		TimeSigNumerator: parsed.TimeSigNumerator,
 	}
 
-	trackID, err := dbpkg.InsertTrack(h.db, track, parsed.Notes)
+	trackID, err := dbpkg.InsertTrack(h.db, track, parsed.Notes, user.ID)
 	if err != nil {
 		// Best-effort cleanup.
 		h.store.Delete(filePath)
@@ -97,7 +99,8 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/tracks
 func (h *tracksHandler) list(w http.ResponseWriter, r *http.Request) {
-	tracks, err := dbpkg.ListTracks(h.db)
+	user := UserFromContext(r.Context())
+	tracks, err := dbpkg.ListTracks(h.db, user.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list tracks")
 		return
@@ -116,7 +119,8 @@ func (h *tracksHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	track, err := dbpkg.GetTrack(h.db, id)
+	user := UserFromContext(r.Context())
+	track, err := dbpkg.GetTrack(h.db, id, user.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "track not found")
@@ -143,7 +147,8 @@ func (h *tracksHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	track, err := dbpkg.GetTrack(h.db, id)
+	user := UserFromContext(r.Context())
+	track, err := dbpkg.GetTrack(h.db, id, user.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "track not found")
@@ -153,7 +158,7 @@ func (h *tracksHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := dbpkg.DeleteTrack(h.db, id); err != nil {
+	if err := dbpkg.DeleteTrack(h.db, id, user.ID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete track")
 		return
 	}
@@ -184,7 +189,8 @@ func (h *tracksHandler) setPracticeBPM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := dbpkg.SetPracticeBPM(h.db, id, body.BPM); err != nil {
+	user := UserFromContext(r.Context())
+	if err := dbpkg.SetPracticeBPM(h.db, id, user.ID, body.BPM); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "track not found")
 		} else {
@@ -204,7 +210,8 @@ func (h *tracksHandler) getMapping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := dbpkg.GetTrack(h.db, id); err != nil {
+	user := UserFromContext(r.Context())
+	if _, err := dbpkg.GetTrack(h.db, id, user.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "track not found")
 		} else {
@@ -229,7 +236,8 @@ func (h *tracksHandler) updateMapping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := dbpkg.GetTrack(h.db, id); err != nil {
+	user := UserFromContext(r.Context())
+	if _, err := dbpkg.GetTrack(h.db, id, user.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "track not found")
 		} else {
