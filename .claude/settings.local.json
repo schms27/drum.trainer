@@ -6,7 +6,10 @@
       "Bash(npm install:*)",
       "Bash(npx svelte-kit sync:*)",
       "Bash(npm run build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(wc:*)",
+      "Bash(go test:*)",
+      "Bash(npm test:*)"
     ]
   }
 }
