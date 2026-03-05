@@ -2,22 +2,27 @@
 	import '../app.css';
 	import Header from '$lib/components/layout/Header.svelte';
 	import { navigating } from '$app/state';
+	import type { LayoutData } from './$types';
 
-	let { children } = $props();
+	let { data, children }: { data: LayoutData; children: any } = $props();
 </script>
 
-{#if navigating.to}
-	<div class="nav-loading-track">
-		<div class="nav-loading-bar"></div>
-	</div>
-{/if}
+{#if data.user}
+	{#if navigating.to}
+		<div class="nav-loading-track">
+			<div class="nav-loading-bar"></div>
+		</div>
+	{/if}
 
-<div class="min-h-screen bg-zinc-950 text-white">
-	<Header />
-	<main class="max-w-5xl mx-auto px-4 py-8">
-		{@render children()}
-	</main>
-</div>
+	<div class="min-h-screen bg-zinc-950 text-white">
+		<Header user={data.user} />
+		<main class="max-w-5xl mx-auto px-4 py-8">
+			{@render children()}
+		</main>
+	</div>
+{:else}
+	{@render children()}
+{/if}
 
 <style>
 	.nav-loading-track {

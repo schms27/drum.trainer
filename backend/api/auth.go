@@ -43,47 +43,47 @@ func (h *authHandler) callback(w http.ResponseWriter, r *http.Request) {
 	provider := chi.URLParam(r, "provider")
 
 	if !authpkg.VerifyState(r, r.URL.Query().Get("state")) {
-		http.Redirect(w, r, "/?auth_error=state_mismatch", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/login?error=state_mismatch", http.StatusTemporaryRedirect)
 		return
 	}
 	authpkg.ClearState(w)
 
 	conf, err := authpkg.NewConfig(provider, h.cfg)
 	if err != nil {
-		http.Redirect(w, r, "/?auth_error=unsupported_provider", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/login?error=unsupported_provider", http.StatusTemporaryRedirect)
 		return
 	}
 
 	oauthToken, err := conf.Exchange(r.Context(), r.URL.Query().Get("code"))
 	if err != nil {
 		log.Printf("oauth exchange error (%s): %v", provider, err)
-		http.Redirect(w, r, "/?auth_error=oauth_exchange", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/login?error=oauth_exchange", http.StatusTemporaryRedirect)
 		return
 	}
 
 	info, err := authpkg.FetchUserInfo(r.Context(), provider, oauthToken, conf)
 	if err != nil {
 		log.Printf("fetch userinfo error (%s): %v", provider, err)
-		http.Redirect(w, r, "/?auth_error=userinfo", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/login?error=userinfo", http.StatusTemporaryRedirect)
 		return
 	}
 
 	user, err := dbpkg.UpsertUser(h.db, provider, info.ProviderID, info.Email, info.Name, info.AvatarURL)
 	if err != nil {
 		log.Printf("upsert user error: %v", err)
-		http.Redirect(w, r, "/?auth_error=db", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/login?error=db", http.StatusTemporaryRedirect)
 		return
 	}
 
 	sessionToken, err := authpkg.GenerateToken()
 	if err != nil {
-		http.Redirect(w, r, "/?auth_error=session", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/login?error=session", http.StatusTemporaryRedirect)
 		return
 	}
 
 	if err := dbpkg.CreateSession(h.db, sessionToken, user.ID); err != nil {
 		log.Printf("create session error: %v", err)
-		http.Redirect(w, r, "/?auth_error=session", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/login?error=session", http.StatusTemporaryRedirect)
 		return
 	}
 
