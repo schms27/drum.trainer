@@ -34,8 +34,9 @@ func main() {
 		log.Fatalf("init storage: %v", err)
 	}
 
-	maxBytes := cfg.MaxUploadSizeMB << 20 // MB → bytes
-	router := api.NewRouter(database, store, maxBytes, cfg)
+	maxBytes      := cfg.MaxUploadSizeMB << 20 // MB → bytes
+	maxPilotBytes := cfg.MaxPilotSizeMB  << 20
+	router := api.NewRouter(database, store, maxBytes, cfg, maxPilotBytes)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("drum-trainer backend listening on http://localhost%s", addr)

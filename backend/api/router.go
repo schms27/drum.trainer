@@ -12,7 +12,7 @@ import (
 )
 
 // NewRouter builds and returns the fully configured chi router.
-func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg config.Config) http.Handler {
+func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg config.Config, maxPilotBytes int64) http.Handler {
 	r := chi.NewRouter()
 
 	// Middleware stack.
@@ -30,6 +30,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 	th := &tracksHandler{db: db, store: store, maxBytes: maxUploadBytes}
 	sh := &sessionsHandler{db: db}
 	sth := &statsHandler{db: db}
+	ph := &pilotsHandler{db: db, store: store, maxBytes: maxPilotBytes}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
@@ -60,6 +61,12 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 
 			// Stats.
 			r.Get("/stats", sth.get)
+
+			// Pilot tracks.
+			r.Post("/tracks/{id}/pilots", ph.create)
+			r.Get("/tracks/{id}/pilots", ph.list)
+			r.Delete("/tracks/{id}/pilots/{pilotId}", ph.delete)
+			r.Get("/tracks/{id}/pilots/{pilotId}/audio", ph.audio)
 		})
 	})
 

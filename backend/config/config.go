@@ -11,7 +11,8 @@ type Config struct {
 	DBPath          string
 	DatabaseURL     string
 	UploadDir       string
-	MaxUploadSizeMB int64
+	MaxUploadSizeMB  int64
+	MaxPilotSizeMB   int64
 
 	// OAuth providers.
 	GoogleClientID     string
@@ -32,7 +33,8 @@ func Load() Config {
 		DBPath:          getEnv("DB_PATH", "./data/drum_trainer.db"),
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
 		UploadDir:       getEnv("UPLOAD_DIR", "./data/uploads"),
-		MaxUploadSizeMB: getEnvInt64("MAX_UPLOAD_SIZE_MB", 16),
+		MaxUploadSizeMB:  getEnvInt64("MAX_UPLOAD_SIZE_MB", 16),
+		MaxPilotSizeMB:   getEnvInt64("MAX_PILOT_SIZE_MB", 150),
 
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
