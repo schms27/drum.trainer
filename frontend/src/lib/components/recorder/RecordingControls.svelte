@@ -8,6 +8,8 @@
 	let {
 		deviceId,
 		onFinished,
+		onRecordingStart,
+		onRecordingStop,
 		expectedHits = [],
 		timeScale = 1,
 		bpm = 120,
@@ -16,6 +18,8 @@
 	}: {
 		deviceId: string;
 		onFinished: (hits: RecordedHit[], startedAt: string, endedAt: string) => void;
+		onRecordingStart?: (audioCtx: AudioContext) => void;
+		onRecordingStop?: () => void;
 		expectedHits?: NoteEvent[];
 		timeScale?: number;
 		bpm?: number;
@@ -41,6 +45,7 @@
 	let error = $state('');
 	let startedAt = '';
 	let pollInterval: ReturnType<typeof setInterval>;
+	let audioCtx: AudioContext | null = null;
 
 	// Wall-clock ms when the first hit starts the clock — used to advance the timeline.
 	let recordingStartWallMs = 0;
@@ -52,6 +57,12 @@
 			return;
 		}
 		error = '';
+
+		// Create a fresh AudioContext for this recording session.
+		audioCtx = new AudioContext();
+		await audioCtx.resume();
+		onRecordingStart?.(audioCtx);
+
 		try {
 			recorder = await createRecorder(deviceId, {
 				onStarted() {
@@ -62,6 +73,9 @@
 			});
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : 'Failed to open MIDI device';
+			onRecordingStop?.();
+			audioCtx.close();
+			audioCtx = null;
 			return;
 		}
 
@@ -83,11 +97,14 @@
 		const hits = recorder.stop();
 		recorder.destroy();
 		recorder = null;
+		onRecordingStop?.();
 
 		// If no hit was ever received the clock never started — just reset.
 		if (!startedAt) {
 			liveHits = [];
 			recorderState = 'idle';
+			audioCtx?.close();
+			audioCtx = null;
 			return;
 		}
 
@@ -107,6 +124,9 @@
 		recordingStartWallMs = 0;
 		recorderState = 'idle';
 		error = '';
+		onRecordingStop?.();
+		audioCtx?.close();
+		audioCtx = null;
 	}
 </script>
 

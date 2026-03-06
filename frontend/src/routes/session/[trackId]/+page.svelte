@@ -2,15 +2,41 @@
 	import { goto } from '$app/navigation';
 	import MidiDeviceSelector from '$lib/components/recorder/MidiDeviceSelector.svelte';
 	import RecordingControls from '$lib/components/recorder/RecordingControls.svelte';
+	import PilotControls from '$lib/components/session/PilotControls.svelte';
 	import PlayButton from '$lib/components/PlayButton.svelte';
 	import Metronome from '$lib/components/Metronome.svelte';
 	import { submitSession } from '$lib/api/sessions';
 	import { setPracticeBpm } from '$lib/api/tracks';
+	import { PilotPlayer } from '$lib/audio/PilotPlayer';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-	const { track } = data;
+	const { track, pilots } = data;
+
+	let pilotPlayer = $state<PilotPlayer | null>(null);
+	let pilotLoadError = $state('');
+
+	async function handleRecordingStart(audioCtx: AudioContext) {
+		if (pilots.length === 0) return;
+		pilotLoadError = '';
+		try {
+			const player = new PilotPlayer(audioCtx);
+			await player.load(pilots.map((p) => ({ id: p.id, trackId: p.track_id, name: p.name })));
+			// Start all pilots immediately; AudioContext was just resumed.
+			const rate = currentBpm / track.bpm;
+			player.startAll(audioCtx.currentTime, rate);
+			pilotPlayer = player;
+		} catch (e: unknown) {
+			pilotLoadError = e instanceof Error ? e.message : 'Failed to load pilot audio';
+		}
+	}
+
+	function handleRecordingStop() {
+		pilotPlayer?.stopAll();
+		pilotPlayer?.destroy();
+		pilotPlayer = null;
+	}
 
 	let selectedDeviceId = $state('');
 	let submitting = $state(false);
@@ -24,6 +50,8 @@
 
 	function handleBpmChange(newBpm: number) {
 		currentBpm = newBpm;
+		// Update pilot playback rate if playing.
+		pilotPlayer?.setPlaybackRate(newBpm / track.bpm);
 		if (saveBpmTimer) clearTimeout(saveBpmTimer);
 		saveBpmTimer = setTimeout(() => {
 			// Save null when the user has reset back to the track's native tempo.
@@ -97,6 +125,14 @@
 		onMetronomeChange={(m) => (activeMetronome = m)}
 	/>
 
+	<!-- Pilot tracks -->
+	{#if pilots.length > 0}
+		<PilotControls {pilots} player={pilotPlayer} />
+		{#if pilotLoadError}
+			<p class="text-red-400 text-sm -mt-4">{pilotLoadError}</p>
+		{/if}
+	{/if}
+
 	<!-- Recording controls + live feed -->
 	<div>
 		<h2 class="text-lg font-semibold text-white mb-4">Recording</h2>
@@ -106,11 +142,13 @@
 			<RecordingControls
 				deviceId={selectedDeviceId}
 				onFinished={handleFinished}
+				onRecordingStart={handleRecordingStart}
+				onRecordingStop={handleRecordingStop}
 				expectedHits={track.notes}
 				timeScale={track.bpm / currentBpm}
 				bpm={track.bpm}
 				timeSigNumerator={track.time_sig_numerator}
-			durationMs={track.duration_ms}
+				durationMs={track.duration_ms}
 			/>
 		{/if}
 		{#if submitError}
