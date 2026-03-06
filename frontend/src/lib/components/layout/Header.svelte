@@ -28,6 +28,7 @@
 		<nav class="flex gap-4 ml-auto text-sm items-center">
 			<a href="/" class="text-zinc-400 hover:text-white transition">Tracks</a>
 			<a href="/history" class="text-zinc-400 hover:text-white transition">History</a>
+			<a href="/stats" class="text-zinc-400 hover:text-white transition">Stats</a>
 
 			<div class="flex items-center gap-3 ml-2 pl-4 border-l border-zinc-700">
 				{#if user.avatar_url}

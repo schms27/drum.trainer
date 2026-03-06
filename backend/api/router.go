@@ -29,6 +29,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 	ah := &authHandler{db: db, cfg: cfg}
 	th := &tracksHandler{db: db, store: store, maxBytes: maxUploadBytes}
 	sh := &sessionsHandler{db: db}
+	sth := &statsHandler{db: db}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
@@ -56,6 +57,9 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 			r.Post("/sessions", sh.create)
 			r.Get("/sessions", sh.list)
 			r.Get("/sessions/{id}", sh.get)
+
+			// Stats.
+			r.Get("/stats", sth.get)
 		})
 	})
 
