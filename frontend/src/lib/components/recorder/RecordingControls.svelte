@@ -9,6 +9,7 @@
 		deviceId,
 		onFinished,
 		onRecordingStart,
+		onFirstHit,
 		onRecordingStop,
 		expectedHits = [],
 		timeScale = 1,
@@ -19,6 +20,7 @@
 		deviceId: string;
 		onFinished: (hits: RecordedHit[], startedAt: string, endedAt: string) => void;
 		onRecordingStart?: (audioCtx: AudioContext) => void;
+		onFirstHit?: (audioCtxTime: number) => void;
 		onRecordingStop?: () => void;
 		expectedHits?: NoteEvent[];
 		timeScale?: number;
@@ -69,6 +71,7 @@
 					startedAt = new Date().toISOString();
 					recordingStartWallMs = Date.now();
 					recorderState = 'recording';
+					onFirstHit?.(audioCtx!.currentTime);
 				}
 			});
 		} catch (e: unknown) {

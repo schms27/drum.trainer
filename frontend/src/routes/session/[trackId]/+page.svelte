@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import MidiDeviceSelector from '$lib/components/recorder/MidiDeviceSelector.svelte';
 	import RecordingControls from '$lib/components/recorder/RecordingControls.svelte';
@@ -7,6 +8,7 @@
 	import Metronome from '$lib/components/Metronome.svelte';
 	import { submitSession } from '$lib/api/sessions';
 	import { setPracticeBpm } from '$lib/api/tracks';
+	import { pilotAudioUrl } from '$lib/api/pilots';
 	import { PilotPlayer } from '$lib/audio/PilotPlayer';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { PageData } from './$types';
@@ -16,20 +18,44 @@
 
 	let pilotPlayer = $state<PilotPlayer | null>(null);
 	let pilotLoadError = $state('');
+	let pilotRawBuffers: ArrayBuffer[] = [];
+	let pilotsReady = $state(pilots.length === 0); // true when pre-fetch done (or no pilots)
+
+	onMount(async () => {
+		if (pilots.length === 0) return;
+		try {
+			pilotRawBuffers = await Promise.all(
+				pilots.map(async (p) => {
+					const resp = await fetch(pilotAudioUrl(p.track_id, p.id));
+					if (!resp.ok) throw new Error(`Failed to fetch pilot audio: ${resp.status}`);
+					return resp.arrayBuffer();
+				})
+			);
+			pilotsReady = true;
+		} catch (e: unknown) {
+			pilotLoadError = e instanceof Error ? e.message : 'Failed to pre-load pilot audio';
+		}
+	});
 
 	async function handleRecordingStart(audioCtx: AudioContext) {
 		if (pilots.length === 0) return;
 		pilotLoadError = '';
 		try {
 			const player = new PilotPlayer(audioCtx);
-			await player.load(pilots.map((p) => ({ id: p.id, trackId: p.track_id, name: p.name })));
-			// Start all pilots immediately; AudioContext was just resumed.
-			const rate = currentBpm / track.bpm;
-			player.startAll(audioCtx.currentTime, rate);
+			await player.loadFromBytes(
+				pilots.map((p) => ({ id: p.id, trackId: p.track_id, name: p.name })),
+				pilotRawBuffers
+			);
 			pilotPlayer = player;
+			// Playback starts on first hit via handleFirstHit — not here.
 		} catch (e: unknown) {
 			pilotLoadError = e instanceof Error ? e.message : 'Failed to load pilot audio';
 		}
+	}
+
+	function handleFirstHit(contextTime: number) {
+		if (!pilotPlayer) return;
+		pilotPlayer.startAll(contextTime, currentBpm / track.bpm);
 	}
 
 	function handleRecordingStop() {
@@ -127,7 +153,7 @@
 
 	<!-- Pilot tracks -->
 	{#if pilots.length > 0}
-		<PilotControls {pilots} player={pilotPlayer} />
+		<PilotControls {pilots} player={pilotPlayer} ready={pilotsReady} />
 		{#if pilotLoadError}
 			<p class="text-red-400 text-sm -mt-4">{pilotLoadError}</p>
 		{/if}
@@ -143,6 +169,7 @@
 				deviceId={selectedDeviceId}
 				onFinished={handleFinished}
 				onRecordingStart={handleRecordingStart}
+				onFirstHit={handleFirstHit}
 				onRecordingStop={handleRecordingStop}
 				expectedHits={track.notes}
 				timeScale={track.bpm / currentBpm}

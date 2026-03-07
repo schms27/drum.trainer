@@ -45,6 +45,27 @@ export class PilotPlayer {
 	}
 
 	/**
+	 * Decode pre-fetched ArrayBuffers. Faster than load() since no network request.
+	 * Each buffer is sliced before decoding so the originals remain reusable.
+	 */
+	async loadFromBytes(
+		pilots: { id: number; trackId: number; name: string }[],
+		rawBuffers: ArrayBuffer[]
+	): Promise<void> {
+		const loaded = await Promise.all(
+			pilots.map(async (p, i) => {
+				// slice() copies the buffer — decodeAudioData detaches the original
+				const buffer = await this.ctx.decodeAudioData(rawBuffers[i].slice(0));
+				const gain = this.ctx.createGain();
+				gain.gain.value = 1;
+				gain.connect(this.ctx.destination);
+				return { id: p.id, trackId: p.trackId, name: p.name, buffer, gain, source: null, muted: false };
+			})
+		);
+		this.pilots = loaded;
+	}
+
+	/**
 	 * Start all pilots at the given AudioContext time (defaults to now).
 	 * Pass `contextTime` = the same value you anchor your MIDI clock to.
 	 */

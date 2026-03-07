@@ -4,10 +4,12 @@
 
 	let {
 		pilots,
-		player
+		player,
+		ready = true
 	}: {
 		pilots: PilotTrack[];
 		player: PilotPlayer | null;
+		ready?: boolean;
 	} = $props();
 
 	// Track mute state locally so the UI stays reactive.
@@ -55,7 +57,7 @@
 						<p class="text-sm text-zinc-200 truncate">{pilot.name}</p>
 						<p class="text-xs text-zinc-500">{formatSize(pilot.file_size)}</p>
 					</div>
-					{#if !player}
+					{#if !ready}
 						<span class="text-xs text-zinc-500">Loading…</span>
 					{:else if muted}
 						<span class="text-xs text-zinc-500">Muted</span>
@@ -63,8 +65,10 @@
 				</div>
 			{/each}
 		</div>
-		{#if !player}
-			<p class="text-xs text-zinc-500 mt-3">Pilot tracks will be available once recording starts.</p>
+		{#if !ready}
+			<p class="text-xs text-zinc-500 mt-3">Loading audio…</p>
+		{:else if !player}
+			<p class="text-xs text-zinc-500 mt-3">Pilot tracks will play in sync with your first hit.</p>
 		{/if}
 	</div>
 {/if}
