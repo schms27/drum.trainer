@@ -54,6 +54,29 @@ func GetPilotTrack(db *sql.DB, id, trackID, userID int64) (*models.PilotTrack, e
 	return scanPilot(row)
 }
 
+// ListPilotFilePaths returns only the file_path values for all pilot tracks
+// belonging to a track. Used to clean up files on disk before a track is deleted.
+func ListPilotFilePaths(db *sql.DB, trackID int64) ([]string, error) {
+	rows, err := db.Query(
+		Rebind(`SELECT file_path FROM pilot_tracks WHERE track_id = ?`),
+		trackID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var paths []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		paths = append(paths, p)
+	}
+	return paths, rows.Err()
+}
+
 // DeletePilotTrack removes the pilot track row. Returns sql.ErrNoRows if not found
 // or not owned by the user.
 func DeletePilotTrack(db *sql.DB, id, trackID, userID int64) error {

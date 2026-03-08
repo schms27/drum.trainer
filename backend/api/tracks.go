@@ -158,13 +158,19 @@ func (h *tracksHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Collect pilot file paths before the DB delete cascades the rows away.
+	pilotPaths, _ := dbpkg.ListPilotFilePaths(h.db, id)
+
 	if err := dbpkg.DeleteTrack(h.db, id, user.ID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete track")
 		return
 	}
 
-	// Best-effort file deletion.
+	// Best-effort file deletion — MIDI file and all pilot audio files.
 	h.store.Delete(track.FilePath)
+	for _, p := range pilotPaths {
+		h.store.Delete(p)
+	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
