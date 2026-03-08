@@ -1,10 +1,4 @@
-# Usage:
-#   CODEBERG_USER=yourname docker compose up -d
-#
-# Or create a .env file in this directory containing:
-#   CODEBERG_USER=yourname
-#
-# PostgreSQL is used by default. To revert to SQLite, remove the DATABASE_URL
+# PostgreSQL is used by default. To use SQLite, remove the DATABASE_URL
 # environment variable from the backend service and the postgres service/volume.
 
 services:
@@ -13,12 +7,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB:       drumtrainer
-      POSTGRES_USER:     drum
-      POSTGRES_PASSWORD: drum
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ${CONTAINER_MOUNTS_PATH}/drum-trainer/postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U drum -d drumtrainer"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d drumtrainer"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -30,9 +24,21 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://drum:drum@postgres:5432/drumtrainer
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/drumtrainer
+      BASE_URL: ${BASE_URL}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      DEV_MODE: ${DEV_MODE}
+      SESSION_SECRET: ${SESSION_SECRET}
     volumes:
       - ${CONTAINER_MOUNTS_PATH}/drum-trainer/data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   frontend:
     image: codeberg.org/trashtr00per/drum-trainer-frontend:latest
@@ -41,7 +47,7 @@ services:
       - backend
     environment:
       # Must match the URL you open in the browser (SvelteKit CSRF protection).
-      ORIGIN: http://localhost
+      ORIGIN: ${BASE_URL}
 
   proxy:
     image: nginx:alpine
