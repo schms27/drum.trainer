@@ -13,6 +13,7 @@ type Config struct {
 	UploadDir       string
 	MaxUploadSizeMB  int64
 	MaxPilotSizeMB   int64
+	MaxSessionHits   int
 
 	// OAuth providers.
 	GoogleClientID     string
@@ -35,6 +36,7 @@ func Load() Config {
 		UploadDir:       getEnv("UPLOAD_DIR", "./data/uploads"),
 		MaxUploadSizeMB:  getEnvInt64("MAX_UPLOAD_SIZE_MB", 16),
 		MaxPilotSizeMB:   getEnvInt64("MAX_PILOT_SIZE_MB", 150),
+		MaxSessionHits:   int(getEnvInt64("MAX_SESSION_HITS", 20_000)),
 
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),

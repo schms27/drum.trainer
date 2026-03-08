@@ -31,7 +31,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 
 	ah := &authHandler{db: db, cfg: cfg}
 	th := &tracksHandler{db: db, store: store, maxBytes: maxUploadBytes}
-	sh := &sessionsHandler{db: db}
+	sh := &sessionsHandler{db: db, maxHits: cfg.MaxSessionHits}
 	sth := &statsHandler{db: db}
 	ph := &pilotsHandler{db: db, store: store, maxBytes: maxPilotBytes}
 

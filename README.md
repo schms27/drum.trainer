@@ -108,6 +108,7 @@ Point your external reverse proxy at port `9980`. The app will be available at t
 | `GITHUB_CLIENT_SECRET` | No | — | GitHub OAuth client secret. |
 | `MAX_UPLOAD_SIZE_MB` | No | `16` | Maximum MIDI file upload size in MB. |
 | `MAX_PILOT_SIZE_MB` | No | `150` | Maximum pilot audio file upload size in MB. |
+| `MAX_SESSION_HITS` | No | `20000` | Maximum number of recorded hits accepted per session submission. |
 | `DEV_MODE` | No | `false` | Set to `true` for local HTTP development. Disables the `Secure` flag on session cookies. |
 
 ### Frontend

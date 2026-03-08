@@ -15,7 +15,8 @@ import (
 )
 
 type sessionsHandler struct {
-	db *sql.DB
+	db      *sql.DB
+	maxHits int
 }
 
 // POST /api/v1/sessions
@@ -28,6 +29,24 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 	if req.TrackID == 0 || req.StartedAt == "" || req.EndedAt == "" {
 		writeError(w, http.StatusBadRequest, "track_id, started_at, and ended_at are required")
 		return
+	}
+	if len(req.Hits) > h.maxHits {
+		writeError(w, http.StatusBadRequest, "too many hits")
+		return
+	}
+	for _, h := range req.Hits {
+		if h.NoteNumber < 0 || h.NoteNumber > 127 {
+			writeError(w, http.StatusBadRequest, "hit note_number out of range (0–127)")
+			return
+		}
+		if h.Velocity < 1 || h.Velocity > 127 {
+			writeError(w, http.StatusBadRequest, "hit velocity out of range (1–127)")
+			return
+		}
+		if h.TimeMs < 0 {
+			writeError(w, http.StatusBadRequest, "hit time_ms must be non-negative")
+			return
+		}
 	}
 
 	user := UserFromContext(r.Context())
@@ -57,6 +76,10 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 	endedAt, err := time.Parse(time.RFC3339, req.EndedAt)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid ended_at format (use RFC3339)")
+		return
+	}
+	if !endedAt.After(startedAt) {
+		writeError(w, http.StatusBadRequest, "ended_at must be after started_at")
 		return
 	}
 
