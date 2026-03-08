@@ -3,6 +3,7 @@ name: Build and push Docker images
 on:
   push:
     branches: ['main']
+    tags: ['v*']
 
 jobs:
   test-backend:
@@ -71,6 +72,9 @@ jobs:
           images: codeberg.org/${{ github.repository_owner }}/drum-trainer-backend
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=sha,prefix=
 
       - name: Build and push
@@ -108,6 +112,9 @@ jobs:
           images: codeberg.org/${{ github.repository_owner }}/drum-trainer-frontend
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=sha,prefix=
 
       - name: Build and push

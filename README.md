@@ -171,6 +171,33 @@ npm test
 
 Migrations run automatically on startup. Both SQLite and PostgreSQL migration sets are embedded in the binary.
 
+## Releasing a New Version
+
+Releases are driven by git tags. Pushing a tag triggers the CI pipeline, which runs all tests and publishes versioned Docker images to the Codeberg registry.
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+This produces the following image tags for both `drum-trainer-backend` and `drum-trainer-frontend`:
+
+| Tag | Example |
+|---|---|
+| Exact version | `1.2.3` |
+| Major.minor | `1.2` |
+| Major | `1` |
+| Short SHA | `a3f9c12` |
+
+`latest` is only updated on pushes to `main`, not on tag pushes.
+
+To deploy the new version, update the image tags in your `compose.yml` (or pull `latest` if you track that) and run:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
 ## License
 
 MIT
