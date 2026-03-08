@@ -2,6 +2,7 @@
 	import '../app.css';
 	import Header from '$lib/components/layout/Header.svelte';
 	import { navigating } from '$app/state';
+	import { PUBLIC_APP_VERSION } from '$env/dynamic/public';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
@@ -14,11 +15,14 @@
 		</div>
 	{/if}
 
-	<div class="min-h-screen bg-zinc-950 text-white">
+	<div class="min-h-screen bg-zinc-950 text-white flex flex-col">
 		<Header user={data.user} />
-		<main class="max-w-5xl mx-auto px-4 py-8">
+		<main class="max-w-5xl w-full mx-auto px-4 py-8 flex-1">
 			{@render children()}
 		</main>
+		<footer class="text-center text-zinc-600 text-xs py-4">
+			v{PUBLIC_APP_VERSION}
+		</footer>
 	</div>
 {:else}
 	{@render children()}
