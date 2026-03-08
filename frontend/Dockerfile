@@ -1,6 +1,8 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
 
+ARG APP_VERSION=dev
+
 WORKDIR /build
 
 # Cache npm install separately from source changes.
@@ -9,7 +11,7 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
 COPY . .
-RUN npm run build
+RUN PUBLIC_APP_VERSION=$APP_VERSION npm run build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM node:22-alpine
