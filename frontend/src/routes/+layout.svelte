@@ -2,7 +2,7 @@
 	import '../app.css';
 	import Header from '$lib/components/layout/Header.svelte';
 	import { navigating } from '$app/state';
-	import { PUBLIC_APP_VERSION } from '$env/dynamic/public';
+	const appVersion = import.meta.env.VITE_APP_VERSION ?? 'dev';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
@@ -21,7 +21,7 @@
 			{@render children()}
 		</main>
 		<footer class="text-center text-zinc-600 text-xs py-4">
-			v{PUBLIC_APP_VERSION}
+			v{appVersion}
 		</footer>
 	</div>
 {:else}

@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
 COPY . .
-RUN PUBLIC_APP_VERSION=$APP_VERSION npm run build
+RUN VITE_APP_VERSION=$APP_VERSION npm run build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM node:22-alpine
@@ -29,8 +29,7 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY --from=builder /build/build ./build
 
 ENV NODE_ENV=production \
-    PORT=3000 \
-    PUBLIC_APP_VERSION=$APP_VERSION
+    PORT=3000
 
 EXPOSE 3000
 CMD ["node", "build/index.js"]
