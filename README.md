@@ -2,6 +2,7 @@
 
 A web app for drummers to practice along with MIDI tracks and get scored on timing accuracy. Upload a MIDI file, connect your e-drum kit via USB, record a take, and see a detailed breakdown of hit rate, timing offset, and ghost notes per instrument.
 
+
 ## Features
 
 - Upload standard MIDI files as practice targets
