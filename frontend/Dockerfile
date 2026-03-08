@@ -5,7 +5,8 @@ WORKDIR /build
 
 # Cache npm install separately from source changes.
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 COPY . .
 RUN npm run build
@@ -18,7 +19,8 @@ WORKDIR /app
 # adapter-node build output is self-contained but still resolves imports from
 # node_modules at runtime, so we install only production dependencies.
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
 
 COPY --from=builder /build/build ./build
 

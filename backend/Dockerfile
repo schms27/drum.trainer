@@ -5,10 +5,13 @@ WORKDIR /build
 
 # Cache dependency downloads separately from source changes.
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux \
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags="-s -w" -o drum-trainer-backend .
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
