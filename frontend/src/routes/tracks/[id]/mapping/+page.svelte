@@ -65,6 +65,8 @@
 	}
 </script>
 
+<svelte:head><title>Mapping: {data.track.name} — Drum Trainer</title></svelte:head>
+
 <div class="min-h-screen bg-zinc-900 text-white p-6 max-w-2xl mx-auto">
 	<div class="mb-6 flex items-center justify-between">
 		<div>

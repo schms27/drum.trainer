@@ -16,6 +16,8 @@
 	}
 </script>
 
+<svelte:head><title>History — Drum Trainer</title></svelte:head>
+
 <div class="max-w-4xl mx-auto p-6">
 	<h1 class="text-2xl font-bold text-white mb-6">Practice History</h1>
 

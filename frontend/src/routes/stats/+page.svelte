@@ -14,6 +14,8 @@
 	}
 </script>
 
+<svelte:head><title>Stats — Drum Trainer</title></svelte:head>
+
 <div class="flex flex-col gap-8">
 	<div>
 		<h1 class="text-2xl font-bold text-white">Your Statistics</h1>

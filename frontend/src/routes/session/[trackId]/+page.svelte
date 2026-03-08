@@ -123,6 +123,8 @@
 	}
 </script>
 
+<svelte:head><title>{track.name} — Drum Trainer</title></svelte:head>
+
 <div class="flex flex-col gap-8">
 	<!-- Track info -->
 	<div>

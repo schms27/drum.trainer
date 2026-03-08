@@ -12,7 +12,8 @@
       "Bash(npm test:*)",
       "Bash(make test:*)",
       "Bash(go get:*)",
-      "Bash(npx svelte-check:*)"
+      "Bash(npx svelte-check:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

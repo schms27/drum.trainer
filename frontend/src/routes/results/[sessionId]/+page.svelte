@@ -18,6 +18,8 @@
 	}));
 </script>
 
+<svelte:head><title>Results: {track.name} — Drum Trainer</title></svelte:head>
+
 <div class="flex flex-col gap-8">
 	<div>
 		<a href="/session/{session.track_id}" class="text-zinc-500 hover:text-zinc-300 text-sm transition">

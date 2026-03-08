@@ -15,6 +15,8 @@
 	const errorMessage = errorCode ? (errorMessages[errorCode] ?? 'Sign-in failed. Please try again.') : null;
 </script>
 
+<svelte:head><title>Sign in — Drum Trainer</title></svelte:head>
+
 <div class="min-h-screen bg-zinc-950 flex items-center justify-center px-4">
 	<div class="w-full max-w-sm">
 		<div class="text-center mb-8">

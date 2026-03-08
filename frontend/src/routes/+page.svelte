@@ -11,6 +11,8 @@
 	}
 </script>
 
+<svelte:head><title>Tracks — Drum Trainer</title></svelte:head>
+
 <div class="flex flex-col gap-10">
 	<div>
 		<h1 class="text-2xl font-bold text-white mb-2">Upload a Target Track</h1>
