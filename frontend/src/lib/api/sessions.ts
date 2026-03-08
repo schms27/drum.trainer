@@ -12,8 +12,17 @@ export async function getSession(id: number): Promise<SessionWithScore> {
 	return apiFetch<SessionWithScore>(`/sessions/${id}`);
 }
 
-export async function listSessions(trackId?: number): Promise<SessionSummary[]> {
-	const qs = trackId ? `?track_id=${trackId}` : '';
-	const data = await apiFetch<{ sessions: SessionSummary[] }>(`/sessions${qs}`);
-	return data.sessions;
+export interface SessionPage {
+	sessions: SessionSummary[];
+	hasMore: boolean;
+}
+
+export async function listSessions(opts: { trackId?: number; limit?: number; before?: number } = {}): Promise<SessionPage> {
+	const params = new URLSearchParams();
+	if (opts.trackId) params.set('track_id', String(opts.trackId));
+	if (opts.limit) params.set('limit', String(opts.limit));
+	if (opts.before) params.set('before', String(opts.before));
+	const qs = params.size ? `?${params}` : '';
+	const data = await apiFetch<{ sessions: SessionSummary[]; has_more: boolean }>(`/sessions${qs}`);
+	return { sessions: data.sessions, hasMore: data.has_more };
 }

@@ -122,6 +122,9 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+const defaultSessionPageSize = 25
+const maxSessionPageSize = 100
+
 // GET /api/v1/sessions
 func (h *sessionsHandler) list(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
@@ -136,7 +139,27 @@ func (h *sessionsHandler) list(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sessions, err := dbpkg.ListSessions(h.db, user.ID, trackID)
+	limit := defaultSessionPageSize
+	if s := r.URL.Query().Get("limit"); s != "" {
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 1 || n > maxSessionPageSize {
+			writeError(w, http.StatusBadRequest, "limit must be between 1 and 100")
+			return
+		}
+		limit = n
+	}
+
+	before := int64(0)
+	if s := r.URL.Query().Get("before"); s != "" {
+		var err error
+		before, err = strconv.ParseInt(s, 10, 64)
+		if err != nil || before < 0 {
+			writeError(w, http.StatusBadRequest, "invalid before cursor")
+			return
+		}
+	}
+
+	sessions, hasMore, err := dbpkg.ListSessions(h.db, user.ID, trackID, limit, before)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list sessions")
 		return
@@ -144,7 +167,7 @@ func (h *sessionsHandler) list(w http.ResponseWriter, r *http.Request) {
 	if sessions == nil {
 		sessions = []models.SessionSummary{}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"sessions": sessions})
+	writeJSON(w, http.StatusOK, map[string]any{"sessions": sessions, "has_more": hasMore})
 }
 
 // GET /api/v1/sessions/{id}

@@ -117,8 +117,11 @@ func GetSessionScore(db *sql.DB, sessionID int64) (*models.ScoreResult, error) {
 	return &score, nil
 }
 
-// ListSessions returns a lightweight list of sessions for a user, optionally filtered by track.
-func ListSessions(db *sql.DB, userID, trackID int64) ([]models.SessionSummary, error) {
+// ListSessions returns a paginated list of sessions for a user, optionally filtered by track.
+// limit controls the page size; before is a cursor (session ID) — only sessions with id < before
+// are returned. Pass before=0 to start from the most recent session.
+// Returns (sessions, hasMore, error). hasMore is true when there are additional rows beyond limit.
+func ListSessions(db *sql.DB, userID, trackID int64, limit int, before int64) ([]models.SessionSummary, bool, error) {
 	query := `
 		SELECT s.id, s.track_id, s.hit_count,
 		       COALESCE(SUM(si.matched_count), 0), COALESCE(SUM(si.target_count), 0),
@@ -133,12 +136,19 @@ func ListSessions(db *sql.DB, userID, trackID int64) ([]models.SessionSummary, e
 		query += ` AND s.track_id = ?`
 		args = append(args, trackID)
 	}
+	if before > 0 {
+		query += ` AND s.id < ?`
+		args = append(args, before)
+	}
 	query += ` GROUP BY s.id, s.track_id, s.hit_count, ss.hit_rate, ss.avg_offset_ms, s.created_at`
 	query += ` ORDER BY s.id DESC`
+	// Fetch one extra row to determine whether more pages exist.
+	query += ` LIMIT ?`
+	args = append(args, limit+1)
 
 	rows, err := db.Query(Rebind(query), args...)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer rows.Close()
 
@@ -147,12 +157,20 @@ func ListSessions(db *sql.DB, userID, trackID int64) ([]models.SessionSummary, e
 		var s models.SessionSummary
 		var ct scanTime
 		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.MatchedCount, &s.TargetCount, &s.HitRate, &s.AvgOffsetMs, &ct); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		s.CreatedAt = ct.T
 		list = append(list, s)
 	}
-	return list, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(list) > limit
+	if hasMore {
+		list = list[:limit]
+	}
+	return list, hasMore, nil
 }
 
 func scanSession(s scanner) (*models.Session, error) {
