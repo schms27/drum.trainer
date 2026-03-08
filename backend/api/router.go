@@ -3,10 +3,12 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/simu/drum-trainer/backend/config"
 	"github.com/simu/drum-trainer/backend/storage"
 )
@@ -18,6 +20,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 	// Middleware stack.
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(httprate.LimitByIP(200, time.Minute))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:4173"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -36,7 +39,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 		r.Get("/health", healthHandler)
 
 		// Auth — public (no session required).
-		r.Get("/auth/{provider}/login", ah.login)
+		r.With(httprate.LimitByIP(10, time.Minute)).Get("/auth/{provider}/login", ah.login)
 		r.Get("/auth/{provider}/callback", ah.callback)
 		r.Post("/auth/logout", ah.logout)
 		r.Get("/auth/me", ah.me)
@@ -46,7 +49,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 			r.Use(RequireAuth(db))
 
 			// Tracks.
-			r.Post("/tracks", th.create)
+			r.With(httprate.LimitByIP(20, time.Minute)).Post("/tracks", th.create)
 			r.Get("/tracks", th.list)
 			r.Get("/tracks/{id}", th.get)
 			r.Delete("/tracks/{id}", th.delete)
@@ -55,7 +58,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 			r.Put("/tracks/{id}/mapping", th.updateMapping)
 
 			// Sessions.
-			r.Post("/sessions", sh.create)
+			r.With(httprate.LimitByIP(30, time.Minute)).Post("/sessions", sh.create)
 			r.Get("/sessions", sh.list)
 			r.Get("/sessions/{id}", sh.get)
 
@@ -63,7 +66,7 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 			r.Get("/stats", sth.get)
 
 			// Pilot tracks.
-			r.Post("/tracks/{id}/pilots", ph.create)
+			r.With(httprate.LimitByIP(20, time.Minute)).Post("/tracks/{id}/pilots", ph.create)
 			r.Get("/tracks/{id}/pilots", ph.list)
 			r.Delete("/tracks/{id}/pilots/{pilotId}", ph.delete)
 			r.Get("/tracks/{id}/pilots/{pilotId}/audio", ph.audio)
