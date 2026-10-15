@@ -241,9 +241,11 @@ Retrieve the full result for a completed session. Used by the results page.
 
 ### GET /api/v1/health
 
+`version` is the build version (the image tag in Docker builds, `dev` for local builds).
+
 **Response `200 OK`:**
 ```json
-{ "status": "ok", "version": "1.0.0" }
+{ "status": "ok", "version": "1.2.3" }
 ```
 
 ---

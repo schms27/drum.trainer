@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -15,14 +16,19 @@ func TestSaveStream(t *testing.T) {
 		t.Fatal(err)
 	}
 	data := bytes.Repeat([]byte("x"), 100_000)
-	path, n, err := s.SaveStream("a.wav", bytes.NewReader(data))
+	n, err := s.SaveStream("a.wav", bytes.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != int64(len(data)) {
 		t.Fatalf("wrote %d bytes, want %d", n, len(data))
 	}
-	got, err := os.ReadFile(path)
+	f, err := s.Open("a.wav")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	got, err := io.ReadAll(f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +48,7 @@ func TestSaveStreamFailureLeavesNoFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := io.MultiReader(strings.NewReader("partial"), failingReader{})
-	if _, _, err := s.SaveStream("a.wav", r); err == nil {
+	if _, err := s.SaveStream("a.wav", r); err == nil {
 		t.Fatal("expected error")
 	}
 	entries, _ := os.ReadDir(dir)
@@ -62,6 +68,15 @@ func TestUniqueFilename(t *testing.T) {
 	for _, name := range []string{"noext", `evil.\..\x`, "a.ph p", "a.verylongextension"} {
 		if got := UniqueFilename(name); len(got) != 32 {
 			t.Errorf("%q: expected no extension, got %q", name, got)
+		}
+	}
+}
+
+func TestPathStaysInsideStore(t *testing.T) {
+	s := &Store{Dir: "/uploads"}
+	for _, name := range []string{"../../etc/passwd", "/etc/passwd", "sub/x.mid"} {
+		if got := s.path(name); filepath.Dir(got) != filepath.Clean("/uploads") {
+			t.Errorf("%q resolved outside store: %q", name, got)
 		}
 	}
 }

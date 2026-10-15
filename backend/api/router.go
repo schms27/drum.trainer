@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"net/http"
 	"time"
 
@@ -10,11 +9,17 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
 	"github.com/simu/drum-trainer/backend/config"
+	dbpkg "github.com/simu/drum-trainer/backend/db"
 	"github.com/simu/drum-trainer/backend/storage"
 )
 
+// Version is the build version reported by /health. It is set at build time:
+//
+//	go build -ldflags "-X github.com/simu/drum-trainer/backend/api.Version=1.2.3"
+var Version = "dev"
+
 // NewRouter builds and returns the fully configured chi router.
-func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg config.Config, maxPilotBytes int64) http.Handler {
+func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg config.Config, maxPilotBytes int64) http.Handler {
 	r := chi.NewRouter()
 
 	// Middleware stack.
@@ -82,5 +87,5 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": "1.0.0"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": Version})
 }

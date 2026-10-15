@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/simu/drum-trainer/backend/models"
@@ -9,12 +8,19 @@ import (
 
 // GetWeeklyStats returns 52 weekly buckets (oldest → newest, ending with the
 // current week) covering the trailing year for the given user.
+// Weeks run Monday–Sunday in loc, the user's time zone, so a late-evening
+// session is counted in the week the user actually played it.
 // Weeks with no activity have zero values.
-func GetWeeklyStats(db *sql.DB, userID int64) (*models.StatsResponse, error) {
-	since := time.Now().UTC().AddDate(-1, 0, 0)
+func GetWeeklyStats(db *DB, userID int64, loc *time.Location) (*models.StatsResponse, error) {
+	return weeklyStats(db, userID, time.Now().In(loc))
+}
+
+func weeklyStats(db *DB, userID int64, now time.Time) (*models.StatsResponse, error) {
+	loc := now.Location()
+	since := now.AddDate(-1, 0, 0).UTC()
 
 	rows, err := db.Query(
-		Rebind(`SELECT track_id, duration_ms, created_at
+		db.Rebind(`SELECT track_id, duration_ms, created_at
 		 FROM sessions WHERE user_id = ? AND created_at >= ?`),
 		userID, since.Format(time.RFC3339),
 	)
@@ -36,7 +42,7 @@ func GetWeeklyStats(db *sql.DB, userID int64) (*models.StatsResponse, error) {
 		if err := rows.Scan(&e.trackID, &e.durationMs, &ct); err != nil {
 			return nil, err
 		}
-		e.createdAt = ct.T
+		e.createdAt = ct.T.In(loc)
 		entries = append(entries, e)
 	}
 	if err := rows.Err(); err != nil {
@@ -70,7 +76,7 @@ func GetWeeklyStats(db *sql.DB, userID int64) (*models.StatsResponse, error) {
 	}
 
 	// Build 52 ordered slots ending with the current week.
-	thisMonday := mondayOf(time.Now().UTC())
+	thisMonday := mondayOf(now)
 	weekly := make([]models.WeekStat, 52)
 	for i := 0; i < 52; i++ {
 		monday := thisMonday.AddDate(0, 0, -(51-i)*7)
@@ -93,11 +99,12 @@ func GetWeeklyStats(db *sql.DB, userID int64) (*models.StatsResponse, error) {
 	return &models.StatsResponse{Weekly: weekly, Totals: totals}, nil
 }
 
-// mondayOf returns the Monday (00:00 UTC) of the week containing t.
+// mondayOf returns midnight on the Monday of the week containing t, in t's
+// location.
 func mondayOf(t time.Time) time.Time {
 	wd := int(t.Weekday())
 	if wd == 0 {
 		wd = 7 // Sunday → 7 so Monday is always offset 1
 	}
-	return time.Date(t.Year(), t.Month(), t.Day()-wd+1, 0, 0, 0, 0, time.UTC)
+	return time.Date(t.Year(), t.Month(), t.Day()-wd+1, 0, 0, 0, 0, t.Location())
 }

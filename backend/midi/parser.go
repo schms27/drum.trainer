@@ -44,6 +44,8 @@ func ParseMIDIFile(data []byte, filename string, drumChannel uint8) (*ParseResul
 		maxTickSeen      int64
 		bpm              = 120.0 // MIDI default when no tempo event is present
 		timeSigNumerator = 4     // MIDI default when no time signature event is present
+		tempoSeen        bool
+		meterSeen        bool
 	)
 
 	// Iterate all tracks and accumulate absolute tick positions.
@@ -65,19 +67,22 @@ func ParseMIDIFile(data []byte, filename string, drumChannel uint8) (*ParseResul
 				}
 			}
 
-			// Capture the first tempo event (microseconds per beat → BPM).
-			if bpm == 120.0 {
+			// Capture the first tempo event. Track whether one was seen rather
+			// than comparing against the default, so an explicit 120 BPM is kept.
+			if !tempoSeen {
 				var t float64
 				if msg.GetMetaTempo(&t) && t > 0 {
 					bpm = t
+					tempoSeen = true
 				}
 			}
 
 			// Capture the first time signature event.
-			if timeSigNumerator == 4 {
+			if !meterSeen {
 				var num, denom uint8
 				if msg.GetMetaMeter(&num, &denom) && num > 0 {
 					timeSigNumerator = int(num)
+					meterSeen = true
 				}
 			}
 

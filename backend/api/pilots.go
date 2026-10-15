@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -17,7 +16,7 @@ import (
 )
 
 type pilotsHandler struct {
-	db       *sql.DB
+	db       *dbpkg.DB
 	store    *storage.Store
 	maxBytes int64
 }
@@ -76,7 +75,7 @@ func (h *pilotsHandler) create(w http.ResponseWriter, r *http.Request) {
 
 	// Stream to disk rather than buffering up to MAX_PILOT_SIZE_MB in memory.
 	storedName := storage.UniqueFilename(header.Filename)
-	filePath, size, err := h.store.SaveStream(storedName, io.MultiReader(bytes.NewReader(head), file))
+	size, err := h.store.SaveStream(storedName, io.MultiReader(bytes.NewReader(head), file))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save file")
 		return
@@ -86,14 +85,14 @@ func (h *pilotsHandler) create(w http.ResponseWriter, r *http.Request) {
 		TrackID:  trackID,
 		Name:     name,
 		Filename: header.Filename,
-		FilePath: filePath,
+		FilePath: storedName,
 		FileSize: size,
 		MimeType: mimeType,
 	}
 
 	id, err := dbpkg.InsertPilotTrack(h.db, pilot, user.ID)
 	if err != nil {
-		h.store.Delete(filePath)
+		h.store.Delete(storedName)
 		writeError(w, http.StatusInternalServerError, "failed to save pilot track")
 		return
 	}
@@ -193,7 +192,7 @@ func (h *pilotsHandler) audio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, err := os.Open(pilot.FilePath)
+	f, err := h.store.Open(pilot.FilePath)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to open audio file")
 		return

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+	_ "time/tzdata" // embed the zone database so ?tz= works without OS tzdata
 
 	"github.com/simu/drum-trainer/backend/api"
 	"github.com/simu/drum-trainer/backend/config"
@@ -20,6 +21,9 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if cfg.SessionSecret == config.DefaultSessionSecret && !cfg.DevMode {
+		log.Printf("WARNING: SESSION_SECRET is not set; OAuth state cookies are signed with a public default. Generate one with: openssl rand -hex 32")
+	}
 
 	// Ensure local data directory exists (SQLite only).
 	if cfg.DatabaseURL == "" {
@@ -33,6 +37,10 @@ func main() {
 		log.Fatalf("open database: %v", err)
 	}
 	defer database.Close()
+
+	if err := db.NormalizeFilePaths(database); err != nil {
+		log.Fatalf("normalize stored file paths: %v", err)
+	}
 
 	store, err := storage.NewStore(cfg.UploadDir)
 	if err != nil {
@@ -59,6 +67,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	go purgeExpiredSessions(ctx, database, time.Hour)
+
 	serverErr := make(chan error, 1)
 	go func() {
 		log.Printf("drum-trainer backend listening on http://localhost%s", srv.Addr)
@@ -76,6 +86,25 @@ func main() {
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			log.Printf("graceful shutdown failed: %v", err)
+		}
+	}
+}
+
+// purgeExpiredSessions deletes expired login sessions at startup and then on
+// every tick until ctx is cancelled.
+func purgeExpiredSessions(ctx context.Context, database *db.DB, every time.Duration) {
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		if n, err := db.DeleteExpiredSessions(database); err != nil {
+			log.Printf("purge expired sessions: %v", err)
+		} else if n > 0 {
+			log.Printf("purged %d expired sessions", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
 		}
 	}
 }

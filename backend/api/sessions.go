@@ -15,7 +15,7 @@ import (
 )
 
 type sessionsHandler struct {
-	db      *sql.DB
+	db      *dbpkg.DB
 	maxHits int
 }
 

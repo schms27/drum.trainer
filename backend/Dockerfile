@@ -1,6 +1,8 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
 FROM golang:1.24-alpine AS builder
 
+ARG APP_VERSION=dev
+
 WORKDIR /build
 
 # Cache dependency downloads separately from source changes.
@@ -12,7 +14,7 @@ COPY . .
 RUN --mount=type=cache,target=/root/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux \
-    go build -trimpath -ldflags="-s -w" -o drum-trainer-backend .
+    go build -trimpath       -ldflags="-s -w -X github.com/simu/drum-trainer/backend/api.Version=${APP_VERSION}"       -o drum-trainer-backend .
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM alpine:3.21

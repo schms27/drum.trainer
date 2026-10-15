@@ -10,19 +10,19 @@ import (
 
 // UpsertUser finds a user by (provider, providerID) and updates their profile
 // fields, or inserts a new user if not found. Returns the user with their DB id.
-func UpsertUser(db *sql.DB, provider, providerID, email, name, avatarURL string) (*models.User, error) {
+func UpsertUser(db *DB, provider, providerID, email, name, avatarURL string) (*models.User, error) {
 	var user models.User
 	var ct scanTime
 
 	err := db.QueryRow(
-		Rebind(`SELECT id, provider, email, name, avatar_url, created_at
+		db.Rebind(`SELECT id, provider, email, name, avatar_url, created_at
 		 FROM users WHERE provider = ? AND provider_id = ?`),
 		provider, providerID,
 	).Scan(&user.ID, &user.Provider, &user.Email, &user.Name, &user.AvatarURL, &ct)
 
 	if err == sql.ErrNoRows {
 		err = db.QueryRow(
-			Rebind(`INSERT INTO users (provider, provider_id, email, name, avatar_url)
+			db.Rebind(`INSERT INTO users (provider, provider_id, email, name, avatar_url)
 			 VALUES (?, ?, ?, ?, ?) RETURNING id, provider, email, name, avatar_url, created_at`),
 			provider, providerID, email, name, avatarURL,
 		).Scan(&user.ID, &user.Provider, &user.Email, &user.Name, &user.AvatarURL, &ct)
@@ -34,7 +34,7 @@ func UpsertUser(db *sql.DB, provider, providerID, email, name, avatarURL string)
 	} else {
 		// Update mutable fields (name, email, avatar may change on the provider side).
 		if _, err := db.Exec(
-			Rebind(`UPDATE users SET email = ?, name = ?, avatar_url = ? WHERE id = ?`),
+			db.Rebind(`UPDATE users SET email = ?, name = ?, avatar_url = ? WHERE id = ?`),
 			email, name, avatarURL, user.ID,
 		); err != nil {
 			return nil, fmt.Errorf("update user: %w", err)
@@ -49,11 +49,11 @@ func UpsertUser(db *sql.DB, provider, providerID, email, name, avatarURL string)
 }
 
 // GetUserByID fetches a user by primary key.
-func GetUserByID(db *sql.DB, id int64) (*models.User, error) {
+func GetUserByID(db *DB, id int64) (*models.User, error) {
 	var user models.User
 	var ct scanTime
 	err := db.QueryRow(
-		Rebind(`SELECT id, provider, email, name, avatar_url, created_at FROM users WHERE id = ?`),
+		db.Rebind(`SELECT id, provider, email, name, avatar_url, created_at FROM users WHERE id = ?`),
 		id,
 	).Scan(&user.ID, &user.Provider, &user.Email, &user.Name, &user.AvatarURL, &ct)
 	if err != nil {
@@ -64,10 +64,10 @@ func GetUserByID(db *sql.DB, id int64) (*models.User, error) {
 }
 
 // CreateSession inserts a new session token for a user with a 30-day expiry.
-func CreateSession(db *sql.DB, token string, userID int64) error {
+func CreateSession(db *DB, token string, userID int64) error {
 	expiresAt := time.Now().Add(30 * 24 * time.Hour).UTC().Format(time.RFC3339)
 	_, err := db.Exec(
-		Rebind(`INSERT INTO user_sessions (token, user_id, expires_at) VALUES (?, ?, ?)`),
+		db.Rebind(`INSERT INTO user_sessions (token, user_id, expires_at) VALUES (?, ?, ?)`),
 		token, userID, expiresAt,
 	)
 	return err
@@ -75,11 +75,11 @@ func CreateSession(db *sql.DB, token string, userID int64) error {
 
 // ValidateSession checks the token exists and is not expired, and returns the
 // associated user. Returns sql.ErrNoRows if the session is invalid or expired.
-func ValidateSession(db *sql.DB, token string) (*models.User, error) {
+func ValidateSession(db *DB, token string) (*models.User, error) {
 	var user models.User
 	var ct scanTime
 	err := db.QueryRow(
-		Rebind(`SELECT u.id, u.provider, u.email, u.name, u.avatar_url, u.created_at
+		db.Rebind(`SELECT u.id, u.provider, u.email, u.name, u.avatar_url, u.created_at
 		 FROM user_sessions s
 		 JOIN users u ON u.id = s.user_id
 		 WHERE s.token = ? AND s.expires_at > ?`),
@@ -93,7 +93,20 @@ func ValidateSession(db *sql.DB, token string) (*models.User, error) {
 }
 
 // DeleteSession removes a session token from the database.
-func DeleteSession(db *sql.DB, token string) error {
-	_, err := db.Exec(Rebind(`DELETE FROM user_sessions WHERE token = ?`), token)
+func DeleteSession(db *DB, token string) error {
+	_, err := db.Exec(db.Rebind(`DELETE FROM user_sessions WHERE token = ?`), token)
 	return err
+}
+
+// DeleteExpiredSessions removes all session tokens whose expiry has passed and
+// returns how many were deleted.
+func DeleteExpiredSessions(db *DB) (int64, error) {
+	res, err := db.Exec(
+		db.Rebind(`DELETE FROM user_sessions WHERE expires_at <= ?`),
+		time.Now().UTC().Format(time.RFC3339),
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

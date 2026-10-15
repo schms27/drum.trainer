@@ -5,6 +5,9 @@ import (
 	"strconv"
 )
 
+// DefaultSessionSecret is the placeholder used when SESSION_SECRET is unset.
+const DefaultSessionSecret = "change-me-in-production"
+
 // Config holds all server configuration values.
 type Config struct {
 	Port            string
@@ -43,7 +46,7 @@ func Load() Config {
 		GitHubClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 		GitHubClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 
-		SessionSecret: getEnv("SESSION_SECRET", "change-me-in-production"),
+		SessionSecret: getEnv("SESSION_SECRET", DefaultSessionSecret),
 		BaseURL:       getEnv("BASE_URL", "http://localhost:8080"),
 		DevMode:       os.Getenv("DEV_MODE") == "true",
 	}

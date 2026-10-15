@@ -16,6 +16,8 @@ export type StatsData = {
 	};
 };
 
+/** Fetch weekly stats, bucketed into weeks in the browser's time zone. */
 export async function fetchStats(): Promise<StatsData> {
-	return apiFetch<StatsData>('/stats');
+	const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	return apiFetch<StatsData>(tz ? `/stats?tz=${encodeURIComponent(tz)}` : '/stats');
 }

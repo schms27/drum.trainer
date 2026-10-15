@@ -16,7 +16,7 @@ const sessionCookieName = "drum_session"
 const sessionMaxAge = 30 * 24 * 60 * 60 // 30 days in seconds
 
 type authHandler struct {
-	db  *sql.DB
+	db  *dbpkg.DB
 	cfg config.Config
 }
 
@@ -29,7 +29,7 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	state, err := authpkg.GenerateState(w, h.cfg.DevMode)
+	state, err := authpkg.GenerateState(w, h.cfg.SessionSecret, h.cfg.DevMode)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to generate state")
 		return
@@ -42,7 +42,7 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 func (h *authHandler) callback(w http.ResponseWriter, r *http.Request) {
 	provider := chi.URLParam(r, "provider")
 
-	if !authpkg.VerifyState(r, r.URL.Query().Get("state")) {
+	if !authpkg.VerifyState(r, r.URL.Query().Get("state"), h.cfg.SessionSecret) {
 		http.Redirect(w, r, "/login?error=state_mismatch", http.StatusTemporaryRedirect)
 		return
 	}

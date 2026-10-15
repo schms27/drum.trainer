@@ -85,6 +85,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ steps.meta.outputs.version }}
           cache-from: type=registry,ref=codeberg.org/${{ github.repository_owner }}/drum-trainer-backend:cache
           cache-to: type=registry,ref=codeberg.org/${{ github.repository_owner }}/drum-trainer-backend:cache,mode=max
 

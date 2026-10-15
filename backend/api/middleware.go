@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 
@@ -16,7 +15,7 @@ const userContextKey contextKey = "user"
 
 // RequireAuth is middleware that validates the session cookie and injects the
 // authenticated user into the request context. Returns 401 on failure.
-func RequireAuth(db *sql.DB) func(http.Handler) http.Handler {
+func RequireAuth(db *dbpkg.DB) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(sessionCookieName)

@@ -1,10 +1,13 @@
 package midi_test
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
 	"github.com/simu/drum-trainer/backend/midi"
+	gm "gitlab.com/gomidi/midi/v2"
+	"gitlab.com/gomidi/midi/v2/smf"
 )
 
 // loadTestFile reads a file relative to the repo root.
@@ -124,3 +127,31 @@ func TestParseMIDIFile_EmptyData_ReturnsError(t *testing.T) {
 	}
 }
 
+
+// TestParseMIDIFile_KeepsExplicit120BPM checks that an explicit first tempo of
+// 120 BPM is not overwritten by a later tempo change.
+func TestParseMIDIFile_KeepsExplicit120BPM(t *testing.T) {
+	var tr smf.Track
+	tr.Add(0, smf.MetaTempo(120))
+	tr.Add(0, gm.NoteOn(9, 36, 100))
+	tr.Add(960, smf.MetaTempo(90))
+	tr.Add(0, gm.NoteOn(9, 38, 100))
+	tr.Close(0)
+
+	s := smf.New()
+	if err := s.Add(tr); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if _, err := s.WriteTo(&buf); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := midi.ParseMIDIFile(buf.Bytes(), "tempo.mid", 9)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.BPM != 120 {
+		t.Fatalf("BPM = %v, want 120 (first tempo event)", result.BPM)
+	}
+}

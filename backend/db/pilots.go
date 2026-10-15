@@ -8,10 +8,10 @@ import (
 )
 
 // InsertPilotTrack persists a new pilot track row and returns its assigned ID.
-func InsertPilotTrack(db *sql.DB, pilot *models.PilotTrack, userID int64) (int64, error) {
+func InsertPilotTrack(db *DB, pilot *models.PilotTrack, userID int64) (int64, error) {
 	var id int64
 	err := db.QueryRow(
-		Rebind(`INSERT INTO pilot_tracks (track_id, user_id, name, filename, file_path, file_size, mime_type)
+		db.Rebind(`INSERT INTO pilot_tracks (track_id, user_id, name, filename, file_path, file_size, mime_type)
 		 VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`),
 		pilot.TrackID, userID, pilot.Name, pilot.Filename, pilot.FilePath, pilot.FileSize, pilot.MimeType,
 	).Scan(&id)
@@ -22,9 +22,9 @@ func InsertPilotTrack(db *sql.DB, pilot *models.PilotTrack, userID int64) (int64
 }
 
 // ListPilotTracks returns all pilot tracks for a drum track owned by the user.
-func ListPilotTracks(db *sql.DB, trackID, userID int64) ([]models.PilotTrack, error) {
+func ListPilotTracks(db *DB, trackID, userID int64) ([]models.PilotTrack, error) {
 	rows, err := db.Query(
-		Rebind(`SELECT id, track_id, name, filename, file_path, file_size, mime_type, created_at
+		db.Rebind(`SELECT id, track_id, name, filename, file_path, file_size, mime_type, created_at
 		 FROM pilot_tracks WHERE track_id = ? AND user_id = ? ORDER BY id ASC`),
 		trackID, userID,
 	)
@@ -45,9 +45,9 @@ func ListPilotTracks(db *sql.DB, trackID, userID int64) ([]models.PilotTrack, er
 }
 
 // GetPilotTrack returns a single pilot track, scoped to the owning user.
-func GetPilotTrack(db *sql.DB, id, trackID, userID int64) (*models.PilotTrack, error) {
+func GetPilotTrack(db *DB, id, trackID, userID int64) (*models.PilotTrack, error) {
 	row := db.QueryRow(
-		Rebind(`SELECT id, track_id, name, filename, file_path, file_size, mime_type, created_at
+		db.Rebind(`SELECT id, track_id, name, filename, file_path, file_size, mime_type, created_at
 		 FROM pilot_tracks WHERE id = ? AND track_id = ? AND user_id = ?`),
 		id, trackID, userID,
 	)
@@ -56,9 +56,9 @@ func GetPilotTrack(db *sql.DB, id, trackID, userID int64) (*models.PilotTrack, e
 
 // ListPilotFilePaths returns only the file_path values for all pilot tracks
 // belonging to a track. Used to clean up files on disk before a track is deleted.
-func ListPilotFilePaths(db *sql.DB, trackID int64) ([]string, error) {
+func ListPilotFilePaths(db *DB, trackID int64) ([]string, error) {
 	rows, err := db.Query(
-		Rebind(`SELECT file_path FROM pilot_tracks WHERE track_id = ?`),
+		db.Rebind(`SELECT file_path FROM pilot_tracks WHERE track_id = ?`),
 		trackID,
 	)
 	if err != nil {
@@ -79,9 +79,9 @@ func ListPilotFilePaths(db *sql.DB, trackID int64) ([]string, error) {
 
 // DeletePilotTrack removes the pilot track row. Returns sql.ErrNoRows if not found
 // or not owned by the user.
-func DeletePilotTrack(db *sql.DB, id, trackID, userID int64) error {
+func DeletePilotTrack(db *DB, id, trackID, userID int64) error {
 	res, err := db.Exec(
-		Rebind(`DELETE FROM pilot_tracks WHERE id = ? AND track_id = ? AND user_id = ?`),
+		db.Rebind(`DELETE FROM pilot_tracks WHERE id = ? AND track_id = ? AND user_id = ?`),
 		id, trackID, userID,
 	)
 	if err != nil {

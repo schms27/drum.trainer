@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -10,7 +9,7 @@ import (
 )
 
 // InsertSession persists a session, its raw hits, and the computed score in one transaction.
-func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHit, score *models.ScoreResult, instrumentGroups map[string]string, userID int64) (int64, error) {
+func InsertSession(db *DB, session *models.Session, hits []models.RecordedHit, score *models.ScoreResult, instrumentGroups map[string]string, userID int64) (int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
@@ -19,7 +18,7 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 
 	var sessionID int64
 	err = tx.QueryRow(
-		Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count, user_id)
+		db.Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count, user_id)
 		 VALUES (?, ?, ?, ?, ?, ?) RETURNING id`),
 		session.TrackID,
 		session.StartedAt.UTC().Format(time.RFC3339),
@@ -34,7 +33,7 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 
 	// Insert raw hits.
 	hitStmt, err := tx.Prepare(
-		Rebind(`INSERT INTO session_hits (session_id, note_number, time_ms, velocity, instrument)
+		db.Rebind(`INSERT INTO session_hits (session_id, note_number, time_ms, velocity, instrument)
 		 VALUES (?, ?, ?, ?, ?)`),
 	)
 	if err != nil {
@@ -59,7 +58,7 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 	}
 
 	_, err = tx.Exec(
-		Rebind(`INSERT INTO session_scores (session_id, hit_rate, miss_rate, ghost_rate, avg_offset_ms, std_offset_ms, score_json)
+		db.Rebind(`INSERT INTO session_scores (session_id, hit_rate, miss_rate, ghost_rate, avg_offset_ms, std_offset_ms, score_json)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`),
 		sessionID, score.HitRate, score.MissRate, score.GhostRate,
 		score.AvgOffsetMs, score.StdOffsetMs, string(scoreJSON),
@@ -70,7 +69,7 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 
 	// Insert per-instrument breakdown rows.
 	instrStmt, err := tx.Prepare(
-		Rebind(`INSERT INTO session_instrument_scores
+		db.Rebind(`INSERT INTO session_instrument_scores
 		 (session_id, instrument, target_count, matched_count, missed_count, ghost_count, hit_rate, avg_offset_ms, std_offset_ms)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
 	)
@@ -93,19 +92,19 @@ func InsertSession(db *sql.DB, session *models.Session, hits []models.RecordedHi
 }
 
 // GetSession returns a session's metadata by ID scoped to the given user.
-func GetSession(db *sql.DB, id, userID int64) (*models.Session, error) {
+func GetSession(db *DB, id, userID int64) (*models.Session, error) {
 	row := db.QueryRow(
-		Rebind(`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at
+		db.Rebind(`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at
 		 FROM sessions WHERE id = ? AND user_id = ?`), id, userID,
 	)
 	return scanSession(row)
 }
 
 // GetSessionScore returns the ScoreResult JSON for a session.
-func GetSessionScore(db *sql.DB, sessionID int64) (*models.ScoreResult, error) {
+func GetSessionScore(db *DB, sessionID int64) (*models.ScoreResult, error) {
 	var blob string
 	err := db.QueryRow(
-		Rebind(`SELECT score_json FROM session_scores WHERE session_id = ?`), sessionID,
+		db.Rebind(`SELECT score_json FROM session_scores WHERE session_id = ?`), sessionID,
 	).Scan(&blob)
 	if err != nil {
 		return nil, err
@@ -121,7 +120,7 @@ func GetSessionScore(db *sql.DB, sessionID int64) (*models.ScoreResult, error) {
 // limit controls the page size; before is a cursor (session ID) — only sessions with id < before
 // are returned. Pass before=0 to start from the most recent session.
 // Returns (sessions, hasMore, error). hasMore is true when there are additional rows beyond limit.
-func ListSessions(db *sql.DB, userID, trackID int64, limit int, before int64) ([]models.SessionSummary, bool, error) {
+func ListSessions(db *DB, userID, trackID int64, limit int, before int64) ([]models.SessionSummary, bool, error) {
 	query := `
 		SELECT s.id, s.track_id, s.hit_count,
 		       COALESCE(SUM(si.matched_count), 0), COALESCE(SUM(si.target_count), 0),
@@ -146,7 +145,7 @@ func ListSessions(db *sql.DB, userID, trackID int64, limit int, before int64) ([
 	query += ` LIMIT ?`
 	args = append(args, limit+1)
 
-	rows, err := db.Query(Rebind(query), args...)
+	rows, err := db.Query(db.Rebind(query), args...)
 	if err != nil {
 		return nil, false, err
 	}

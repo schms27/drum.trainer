@@ -10,7 +10,9 @@ import (
 	"strings"
 )
 
-// Store handles saving and reading uploaded MIDI files on disk.
+// Store handles saving and reading uploaded files on disk. Files are kept
+// flat in Dir and addressed by name only, so the database never stores
+// absolute paths and UPLOAD_DIR can move without breaking existing rows.
 type Store struct {
 	Dir string
 }
@@ -23,25 +25,30 @@ func NewStore(dir string) (*Store, error) {
 	return &Store{Dir: dir}, nil
 }
 
-// Save writes data to a file named <filename> inside the store directory.
-// Returns the absolute path of the saved file.
-func (s *Store) Save(filename string, data []byte) (string, error) {
-	path := filepath.Join(s.Dir, filename)
-	if err := os.WriteFile(path, data, 0644); err != nil {
-		return "", fmt.Errorf("write file %q: %w", path, err)
-	}
-	return path, nil
+// path resolves a stored file name to its location on disk. Only the base
+// name is used, so a name can never point outside the store directory.
+func (s *Store) path(name string) string {
+	return filepath.Join(s.Dir, filepath.Base(name))
 }
 
-// SaveStream copies r into a file named <filename> inside the store directory
+// Save writes data to a file named <name> inside the store directory.
+func (s *Store) Save(name string, data []byte) error {
+	path := s.path(name)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write file %q: %w", path, err)
+	}
+	return nil
+}
+
+// SaveStream copies r into a file named <name> inside the store directory
 // without buffering it in memory. The data is written to a temporary file
 // first and renamed into place, so a failed copy never leaves a partial file.
-// Returns the path of the saved file and the number of bytes written.
-func (s *Store) SaveStream(filename string, r io.Reader) (string, int64, error) {
-	path := filepath.Join(s.Dir, filename)
+// Returns the number of bytes written.
+func (s *Store) SaveStream(name string, r io.Reader) (int64, error) {
+	path := s.path(name)
 	tmp, err := os.CreateTemp(s.Dir, ".upload-*")
 	if err != nil {
-		return "", 0, fmt.Errorf("create temp file: %w", err)
+		return 0, fmt.Errorf("create temp file: %w", err)
 	}
 	tmpName := tmp.Name()
 
@@ -51,27 +58,24 @@ func (s *Store) SaveStream(filename string, r io.Reader) (string, int64, error) 
 	}
 	if err != nil {
 		os.Remove(tmpName)
-		return "", 0, fmt.Errorf("write file %q: %w", path, err)
+		return 0, fmt.Errorf("write file %q: %w", path, err)
 	}
 	if err := os.Rename(tmpName, path); err != nil {
 		os.Remove(tmpName)
-		return "", 0, fmt.Errorf("rename to %q: %w", path, err)
+		return 0, fmt.Errorf("rename to %q: %w", path, err)
 	}
-	return path, n, nil
+	return n, nil
 }
 
-// Read reads and returns the contents of the file at the given absolute path.
-func (s *Store) Read(path string) ([]byte, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read file %q: %w", path, err)
-	}
-	return data, nil
+// Open opens the stored file <name> for reading.
+func (s *Store) Open(name string) (*os.File, error) {
+	return os.Open(s.path(name))
 }
 
-// Delete removes a file at the given absolute path. Safe to call if the file
-// does not exist.
-func (s *Store) Delete(path string) error {
+// Delete removes the stored file <name>. Safe to call if the file does not
+// exist.
+func (s *Store) Delete(name string) error {
+	path := s.path(name)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("delete file %q: %w", path, err)
 	}

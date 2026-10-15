@@ -15,7 +15,7 @@ import (
 )
 
 type tracksHandler struct {
-	db       *sql.DB
+	db       *dbpkg.DB
 	store    *storage.Store
 	maxBytes int64
 }
@@ -65,8 +65,7 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 
 	// Save to disk.
 	storedName := storage.UniqueFilename(header.Filename)
-	filePath, err := h.store.Save(storedName, data)
-	if err != nil {
+	if err := h.store.Save(storedName, data); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save file")
 		return
 	}
@@ -76,7 +75,7 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 	track := &models.Track{
 		Name:             parsed.Name,
 		Filename:         header.Filename,
-		FilePath:         filePath,
+		FilePath:         storedName,
 		FileSize:         int64(len(data)),
 		DurationMs:       parsed.DurationMs,
 		NoteCount:        len(parsed.Notes),
@@ -88,7 +87,7 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 	trackID, err := dbpkg.InsertTrack(h.db, track, parsed.Notes, user.ID)
 	if err != nil {
 		// Best-effort cleanup.
-		h.store.Delete(filePath)
+		h.store.Delete(storedName)
 		writeError(w, http.StatusInternalServerError, "failed to save track")
 		return
 	}
@@ -292,7 +291,7 @@ func (h *tracksHandler) updateMapping(w http.ResponseWriter, r *http.Request) {
 
 // buildMappings returns the effective note→instrument list for a track,
 // merging default GM groups with any custom overrides.
-func buildMappings(db *sql.DB, trackID int64) ([]models.NoteMapping, error) {
+func buildMappings(db *dbpkg.DB, trackID int64) ([]models.NoteMapping, error) {
 	noteNumbers, err := dbpkg.GetTrackNoteNumbers(db, trackID)
 	if err != nil {
 		return nil, err
