@@ -1,6 +1,9 @@
 package midi
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // DrumMap maps GM channel-10 note numbers to instrument group names.
 // Groups are intentionally broad so the scorer can match across
@@ -31,6 +34,23 @@ var DrumMap = map[int]string{
 	43: "Tom (low)",   // High Floor Tom
 	45: "Tom (low)",   // Low Tom
 	41: "Tom (floor)", // Low Floor Tom
+}
+
+// Instruments lists every instrument group a note can be mapped to, in
+// display order. The frontend mirrors this list in src/lib/drums.ts.
+var Instruments = []string{
+	"Bass Drum", "Snare", "Hi-Hat", "Crash", "Ride",
+	"Tom (high)", "Tom (mid)", "Tom (low)", "Tom (floor)",
+	"Other",
+}
+
+// legacyInstruments are accepted in custom mappings for backward
+// compatibility but no longer offered for new mappings.
+var legacyInstruments = []string{"Tom"}
+
+// IsValidInstrument reports whether name is an accepted mapping target.
+func IsValidInstrument(name string) bool {
+	return slices.Contains(Instruments, name) || slices.Contains(legacyInstruments, name)
 }
 
 // InstrumentGroup returns the group name for a given GM drum note number.

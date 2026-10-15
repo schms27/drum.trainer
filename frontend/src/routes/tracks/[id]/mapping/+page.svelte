@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { NoteMapping } from '$lib/types/track';
 	import { updateTrackMapping } from '$lib/api/tracks';
+	import { INSTRUMENTS } from '$lib/drums';
 
 	let { data } = $props();
 
@@ -46,7 +47,6 @@
 		66: 'Low Timbale'
 	};
 
-	const INSTRUMENTS = ['Bass Drum', 'Snare', 'Hi-Hat', 'Crash', 'Ride', 'Tom (high)', 'Tom (mid)', 'Tom (low)', 'Tom (floor)', 'Other'];
 
 	async function handleSave() {
 		saving = true;

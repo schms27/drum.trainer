@@ -1,5 +1,9 @@
 # PostgreSQL is used by default. To use SQLite, remove the DATABASE_URL
 # environment variable from the backend service and the postgres service/volume.
+#
+# Set DRUM_TRAINER_VERSION in .env (e.g. 1.2.3) to pin a release so that
+# `docker compose pull` never changes the version unexpectedly and rolling back
+# is a one-line change. Unset, it tracks `latest` (the tip of main).
 
 services:
   postgres:
@@ -18,7 +22,7 @@ services:
       retries: 10
 
   backend:
-    image: codeberg.org/trashtr00per/drum-trainer-backend:latest
+    image: codeberg.org/trashtr00per/drum-trainer-backend:${DRUM_TRAINER_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -41,13 +45,10 @@ services:
       retries: 5
 
   frontend:
-    image: codeberg.org/trashtr00per/drum-trainer-frontend:latest
+    image: codeberg.org/trashtr00per/drum-trainer-frontend:${DRUM_TRAINER_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       - backend
-    environment:
-      # Must match the URL you open in the browser (SvelteKit CSRF protection).
-      ORIGIN: ${BASE_URL}
 
   proxy:
     image: nginx:alpine

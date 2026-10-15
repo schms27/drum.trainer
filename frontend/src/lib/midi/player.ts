@@ -1,21 +1,9 @@
+import { drumGroup } from '$lib/drums';
+
 export interface PlayableHit {
 	note_number: number;
 	time_ms: number;
 	velocity: number;
-}
-
-// Mirrors the backend DrumMap — keeps the player self-contained.
-const DRUM_GROUPS: Record<number, string> = {
-	35: 'Bass Drum', 36: 'Bass Drum',
-	37: 'Snare', 38: 'Snare', 40: 'Snare',
-	42: 'Hi-Hat', 44: 'Hi-Hat', 46: 'Hi-Hat',
-	49: 'Crash', 57: 'Crash',
-	51: 'Ride', 53: 'Ride', 59: 'Ride',
-	41: 'Tom', 43: 'Tom', 45: 'Tom', 47: 'Tom', 48: 'Tom', 50: 'Tom'
-};
-
-function drumGroup(note: number): string {
-	return DRUM_GROUPS[note] ?? 'Other';
 }
 
 /** 500 ms of white noise shared across all scheduled hits in one playback. */
@@ -37,7 +25,9 @@ function scheduleHit(
 ): void {
 	const amp = (velocity / 127) * 0.8;
 
-	switch (drumGroup(note)) {
+	// All tom pitches share one synth voice.
+	const group = drumGroup(note);
+	switch (group.startsWith('Tom') ? 'Tom' : group) {
 		case 'Bass Drum': {
 			const osc = ctx.createOscillator();
 			const env = ctx.createGain();

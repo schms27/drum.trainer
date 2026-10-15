@@ -354,3 +354,65 @@ func TestScore_ByInstrument_OffsetNilWhenNoMatches(t *testing.T) {
 		}
 	}
 }
+
+// --- adaptive windows and closest-first assignment ---
+
+func TestScore_WindowStopsAtMidpointBetweenNotes(t *testing.T) {
+	// Notes 150ms apart → ±75ms windows. A hit 100ms after the first note is
+	// only 50ms before the second, so it belongs to the second.
+	r := scoring.Score(
+		[]models.NoteEvent{note(36, 1000), note(36, 1150)},
+		[]models.RecordedHit{hit(36, 1100)},
+		singleGroup,
+	)
+	if len(r.MatchedHits) != 1 {
+		t.Fatalf("expected 1 match, got %d", len(r.MatchedHits))
+	}
+	if m := r.MatchedHits[0]; m.TargetTimeMs != 1150 || m.OffsetMs != -50 {
+		t.Errorf("expected match to note at 1150 with offset -50, got target %.0f offset %.0f", m.TargetTimeMs, m.OffsetMs)
+	}
+}
+
+func TestScore_ClosestPairWinsWhenWindowsOverlap(t *testing.T) {
+	// A flam 10ms apart: both windows are clamped up to the 25ms floor and
+	// overlap. The single hit is 2ms from the second note and 12ms from the
+	// first, so it must go to the second.
+	r := scoring.Score(
+		[]models.NoteEvent{note(38, 1000), note(38, 1010)},
+		[]models.RecordedHit{hit(38, 1012)},
+		singleGroup,
+	)
+	if len(r.MatchedHits) != 1 || r.MatchedHits[0].TargetTimeMs != 1010 {
+		t.Fatalf("expected the hit to match the note at 1010, got %+v", r.MatchedHits)
+	}
+}
+
+func TestScore_MissedNoteDoesNotStealNextHit(t *testing.T) {
+	// 16ths at 120 BPM (125ms apart). The drummer skips the first note and
+	// plays the second 50ms late. A fixed ±200ms window would hand that hit to
+	// the skipped first note (175ms away); it belongs to the second.
+	r := scoring.Score(
+		[]models.NoteEvent{note(42, 1000), note(42, 1125)},
+		[]models.RecordedHit{hit(42, 1175)},
+		singleGroup,
+	)
+	if len(r.MatchedHits) != 1 {
+		t.Fatalf("expected 1 match, got %d", len(r.MatchedHits))
+	}
+	if m := r.MatchedHits[0]; m.TargetTimeMs != 1125 || m.OffsetMs != 50 {
+		t.Errorf("expected match to note at 1125 with offset 50, got target %.0f offset %.0f", m.TargetTimeMs, m.OffsetMs)
+	}
+}
+
+func TestScore_SimultaneousNotesKeepFullWindow(t *testing.T) {
+	// Two note numbers in the same group at the same time must not shrink each
+	// other's window to the floor.
+	r := scoring.Score(
+		[]models.NoteEvent{note(35, 1000), note(36, 1000)},
+		[]models.RecordedHit{hit(36, 1150)},
+		singleGroup,
+	)
+	if len(r.MatchedHits) != 1 {
+		t.Fatalf("expected 1 match within the full 200ms window, got %d", len(r.MatchedHits))
+	}
+}

@@ -2,20 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { NoteEvent } from '$lib/types/track';
 	import type { RecordedHit } from '$lib/types/session';
-
-	const GM_GROUP: Record<number, string> = {
-		35: 'Bass Drum', 36: 'Bass Drum',
-		37: 'Snare', 38: 'Snare', 40: 'Snare',
-		42: 'Hi-Hat', 44: 'Hi-Hat', 46: 'Hi-Hat',
-		49: 'Crash', 57: 'Crash',
-		51: 'Ride', 53: 'Ride', 59: 'Ride',
-		50: 'Tom (high)',
-		47: 'Tom (mid)', 48: 'Tom (mid)',
-		43: 'Tom (low)', 45: 'Tom (low)',
-		41: 'Tom (floor)'
-	};
-
-	const LANES = ['Bass Drum', 'Snare', 'Hi-Hat', 'Crash', 'Ride', 'Tom (high)', 'Tom (mid)', 'Tom (low)', 'Tom (floor)'] as const;
+	import { GM_GROUP, LANES } from '$lib/drums';
 
 	// SVG coordinate space — matches the results TimelineView so the two look identical.
 	const SVG_W = 680;

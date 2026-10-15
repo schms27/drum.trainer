@@ -7,15 +7,26 @@ import (
 	"github.com/simu/drum-trainer/backend/models"
 )
 
-const matchWindowMs = 200.0
+const (
+	// maxMatchWindowMs is the widest a target's match window can be: an
+	// isolated note accepts hits up to ±200ms away.
+	maxMatchWindowMs = 200.0
+	// minMatchWindowMs is the floor for densely packed notes (flams, fast
+	// rolls) so they still have a usable window.
+	minMatchWindowMs = 25.0
+)
 
 // Score computes a ScoreResult by aligning recordedHits to targetNotes.
 //
-// Algorithm: greedy nearest-neighbour with instrument grouping.
+// Algorithm:
 //   - Matching is performed per instrument group so a bass drum hit cannot
 //     steal a snare match.
-//   - Within each group, target notes and recorded hits are time-sorted, then
-//     a linear scan finds the nearest unmatched recorded hit within ±200ms.
+//   - Each target gets its own window: half the distance to its nearest
+//     neighbouring target in the same group, clamped to [25ms, 200ms]. In fast
+//     passages windows therefore stop at the midpoint between notes, so a hit
+//     is judged against the note it was closest to rather than a neighbour.
+//   - All (target, hit) pairs inside a window are assigned closest-first, so
+//     an earlier target cannot take a hit that is much closer to a later one.
 //   - Unmatched target notes → misses.
 //   - Unmatched recorded hits → ghost notes.
 func Score(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, instrumentGroup func(int) string) *models.ScoreResult {
@@ -66,54 +77,29 @@ func Score(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, in
 		sort.Slice(targets, func(i, j int) bool { return targets[i].TimeMs < targets[j].TimeMs })
 		sort.Slice(hits, func(i, j int) bool { return hits[i].TimeMs < hits[j].TimeMs })
 
-		usedHit := make([]bool, len(hits))
+		matchOf, usedHit := matchGroup(targets, hits)
 		var groupOffsets []float64
 		var groupMatched []models.MatchedHit
 
-		lowerBound := 0 // advance this to skip hits that are too early
-
-		for _, target := range targets {
-			// Move lower bound past hits that are definitely too early.
-			for lowerBound < len(hits) && hits[lowerBound].TimeMs < target.TimeMs-matchWindowMs {
-				lowerBound++
-			}
-
-			bestIdx := -1
-			bestDist := math.MaxFloat64
-
-			for k := lowerBound; k < len(hits); k++ {
-				delta := hits[k].TimeMs - target.TimeMs
-				if delta > matchWindowMs {
-					break // all subsequent hits are too late
-				}
-				if usedHit[k] {
-					continue
-				}
-				dist := math.Abs(delta)
-				if dist < bestDist {
-					bestDist = dist
-					bestIdx = k
-				}
-			}
-
-			if bestIdx >= 0 {
-				usedHit[bestIdx] = true
-				offset := hits[bestIdx].TimeMs - target.TimeMs
-				groupOffsets = append(groupOffsets, offset)
-				allOffsets = append(allOffsets, offset)
-				mh := models.MatchedHit{
-					TargetTimeMs:   target.TimeMs,
-					RecordedTimeMs: hits[bestIdx].TimeMs,
-					OffsetMs:       offset,
-					NoteNumber:     target.NoteNumber,
-					Instrument:     group,
-				}
-				groupMatched = append(groupMatched, mh)
-				allMatchedHits = append(allMatchedHits, mh)
-				totalMatched++
-			} else {
+		for i, target := range targets {
+			k := matchOf[i]
+			if k < 0 {
 				totalMissed++
+				continue
 			}
+			offset := hits[k].TimeMs - target.TimeMs
+			groupOffsets = append(groupOffsets, offset)
+			allOffsets = append(allOffsets, offset)
+			mh := models.MatchedHit{
+				TargetTimeMs:   target.TimeMs,
+				RecordedTimeMs: hits[k].TimeMs,
+				OffsetMs:       offset,
+				NoteNumber:     target.NoteNumber,
+				Instrument:     group,
+			}
+			groupMatched = append(groupMatched, mh)
+			allMatchedHits = append(allMatchedHits, mh)
+			totalMatched++
 		}
 
 		// Collect ghost hits (unmatched recorded hits).
@@ -167,6 +153,62 @@ func Score(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, in
 		MatchedHits:  allMatchedHits,
 		GhostHits:    allGhostHits,
 	}
+}
+
+// matchGroup pairs time-sorted targets with time-sorted hits of one instrument
+// group. It returns, for each target, the index of its matched hit (or -1),
+// and for each hit whether it was used.
+func matchGroup(targets []models.NoteEvent, hits []models.RecordedHit) (matchOf []int, usedHit []bool) {
+	type candidate struct {
+		target, hit int
+		dist        float64
+	}
+	var candidates []candidate
+	for i, t := range targets {
+		w := matchWindow(targets, i)
+		// First hit not earlier than the window start.
+		k := sort.Search(len(hits), func(k int) bool { return hits[k].TimeMs >= t.TimeMs-w })
+		for ; k < len(hits) && hits[k].TimeMs <= t.TimeMs+w; k++ {
+			candidates = append(candidates, candidate{i, k, math.Abs(hits[k].TimeMs - t.TimeMs)})
+		}
+	}
+	// Closest pairs first; the stable sort keeps ties in time order.
+	sort.SliceStable(candidates, func(a, b int) bool { return candidates[a].dist < candidates[b].dist })
+
+	matchOf = make([]int, len(targets))
+	for i := range matchOf {
+		matchOf[i] = -1
+	}
+	usedHit = make([]bool, len(hits))
+	for _, c := range candidates {
+		if matchOf[c.target] < 0 && !usedHit[c.hit] {
+			matchOf[c.target] = c.hit
+			usedHit[c.hit] = true
+		}
+	}
+	return matchOf, usedHit
+}
+
+// matchWindow returns the ±window (ms) for targets[i]: half the gap to the
+// nearest neighbouring target at a different time, clamped to
+// [minMatchWindowMs, maxMatchWindowMs]. Notes at the exact same time (e.g. the
+// same drum on two note numbers) are skipped so they don't shrink the window.
+func matchWindow(targets []models.NoteEvent, i int) float64 {
+	t := targets[i].TimeMs
+	gap := math.Inf(1)
+	for j := i - 1; j >= 0; j-- {
+		if d := t - targets[j].TimeMs; d > 0 {
+			gap = d
+			break
+		}
+	}
+	for j := i + 1; j < len(targets); j++ {
+		if d := targets[j].TimeMs - t; d > 0 {
+			gap = math.Min(gap, d)
+			break
+		}
+	}
+	return math.Max(minMatchWindowMs, math.Min(maxMatchWindowMs, gap/2))
 }
 
 func safeDiv(a, b float64) float64 {

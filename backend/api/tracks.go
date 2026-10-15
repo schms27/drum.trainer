@@ -262,15 +262,8 @@ func (h *tracksHandler) updateMapping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valid := map[string]bool{
-		"Bass Drum": true, "Snare": true, "Hi-Hat": true,
-		"Crash": true, "Ride": true,
-		"Tom (high)": true, "Tom (mid)": true, "Tom (low)": true, "Tom (floor)": true,
-		"Tom": true, // kept for backward-compatible user mappings
-		"Other": true,
-	}
 	for _, m := range body.Mappings {
-		if !valid[m.Instrument] {
+		if !midipkg.IsValidInstrument(m.Instrument) {
 			writeError(w, http.StatusBadRequest, "invalid instrument: "+m.Instrument)
 			return
 		}

@@ -14,22 +14,10 @@ COPY . .
 RUN VITE_APP_VERSION=$APP_VERSION npm run build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM node:22-alpine
+# The app is a static SPA, so plain nginx serves it — no Node runtime needed.
+FROM nginx:alpine
 
-ARG APP_VERSION=dev
-
-WORKDIR /app
-
-# adapter-node build output is self-contained but still resolves imports from
-# node_modules at runtime, so we install only production dependencies.
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev
-
-COPY --from=builder /build/build ./build
-
-ENV NODE_ENV=production \
-    PORT=3000
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /build/build /usr/share/nginx/html
 
 EXPOSE 3000
-CMD ["node", "build/index.js"]

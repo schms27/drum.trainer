@@ -185,9 +185,9 @@ Browser loads /results/[sessionId]
 Located in `backend/scoring/scorer.go`.
 
 ### Match Window
-`±200ms` — a recorded hit is a candidate match for a target note only if `|recorded.time_ms - target.time_ms| <= 200`.
+Each target note gets its own window: half the distance to its nearest neighbouring target in the same instrument group (ignoring notes at the exact same time), clamped to `[25ms, 200ms]`. An isolated note accepts hits up to ±200ms away; in a fast passage the window stops at the midpoint between notes, so a hit is judged against the note it was closest to.
 
-### Algorithm: Greedy Nearest-Neighbour with Instrument Grouping
+### Algorithm: Closest-First Matching with Instrument Grouping
 
 Matching is done per instrument group (never across groups — a bass drum hit cannot match a snare target). This is critical for accuracy.
 
@@ -197,13 +197,13 @@ For each instrument group G:
   recorded = recorded hits in G, sorted by time_ms
   usedRecorded = {}
 
-  For each target T in targets:
-    Find the closest recorded hit R (not yet used) within ±200ms of T
-    If found:
+  candidates = every (T, R) with |R.time_ms - T.time_ms| <= window(T)
+  For each candidate, closest first:
+    If neither T nor R is matched yet:
       pair (T, R), offset_ms = R.time_ms - T.time_ms
       usedRecorded.add(R)
-    Else:
-      T is a MISS
+
+  Any T left unmatched → MISS
 
   Any R in recorded not in usedRecorded → GHOST
 
@@ -311,16 +311,18 @@ Vite proxies `/api/*` → `http://localhost:8080`, eliminating CORS issues in de
 ### Production Build
 
 ```bash
-# Build SvelteKit to static output
-cd frontend && pnpm build   # outputs to frontend/build/
+# Build SvelteKit to static output (SPA, ssr = false)
+cd frontend && npm run build   # outputs to frontend/build/
 
-# Go serves both the API and the static frontend
-cd backend && go build -o drum-trainer . && ./drum-trainer
-# Go's router.go mounts frontend/build/ as a static file handler
-# /api/* → Go handlers; everything else → SvelteKit's index.html (SPA fallback)
+# Build the Go API server
+cd backend && go build -o drum-trainer .
 ```
 
-Use `@sveltejs/adapter-node` in `svelte.config.js`.
+The frontend uses `@sveltejs/adapter-static` with `fallback: 'index.html'`. In
+Docker, the frontend image is plain nginx serving `frontend/build/`
+(`frontend/nginx.conf`: SPA fallback, long-lived caching for
+`/_app/immutable/`). The outer proxy (repo-root `nginx.conf`) routes `/api/` to
+the backend and everything else to the frontend container.
 
 ---
 
@@ -338,7 +340,7 @@ modernc.org/sqlite             v1.33.x  — Pure-Go SQLite (no CGO)
 ```
 svelte                    ^5.0
 @sveltejs/kit             ^2.16
-@sveltejs/adapter-node    ^5.2
+@sveltejs/adapter-static  ^3.0
 @sveltejs/vite-plugin-svelte ^5.0
 @tailwindcss/vite         ^4.0
 tailwindcss               ^4.0

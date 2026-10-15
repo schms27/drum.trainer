@@ -52,8 +52,8 @@ POSTGRES_PASSWORD=a-strong-random-password
 # Public URL of the app (no trailing slash)
 BASE_URL=https://your-domain.com
 
-# Must match BASE_URL exactly (used by SvelteKit CSRF protection)
-ORIGIN=https://your-domain.com
+# Release to run (see "Releasing a New Version"). Leave unset to track latest.
+DRUM_TRAINER_VERSION=1.2.3
 
 # Random secret for signing OAuth CSRF state cookies — generate with:
 #   openssl rand -hex 32
@@ -114,9 +114,13 @@ Point your external reverse proxy at port `9980`. The app will be available at t
 
 ### Frontend
 
-| Variable | Required | Description |
-|---|---|---|
-| `ORIGIN` | Yes | Must match the URL the browser uses to reach the app. Required for SvelteKit CSRF protection. |
+None. The frontend is a static single-page app served by nginx; all configuration lives in the backend.
+
+### Compose
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DRUM_TRAINER_VERSION` | No | `latest` | Image tag for both the backend and frontend images, e.g. `1.2.3`. Pin this in production. |
 
 ---
 
@@ -168,7 +172,7 @@ npm test
 | Database | PostgreSQL (production) or SQLite (development) |
 | Auth | OAuth 2.0 via Google / GitHub, server-side session cookie |
 | MIDI parsing | gitlab.com/gomidi/midi/v2 |
-| Scoring | Greedy nearest-neighbour, ±200ms window, per instrument group |
+| Scoring | Closest-first matching, per-note window (25–200ms, by note spacing), per instrument group |
 
 Migrations run automatically on startup. Both SQLite and PostgreSQL migration sets are embedded in the binary.
 
@@ -192,7 +196,9 @@ This produces the following image tags for both `drum-trainer-backend` and `drum
 
 `latest` is only updated on pushes to `main`, not on tag pushes.
 
-To deploy the new version, update the image tags in your `compose.yml` (or pull `latest` if you track that) and run:
+To roll back, set `DRUM_TRAINER_VERSION` to the previous version and run the same commands. Migrations only move forward, so roll back across a release that added a migration only if you also restore a database backup.
+
+To deploy the new version, set `DRUM_TRAINER_VERSION` in your `.env` (or leave it unset to track `latest`) and run:
 
 ```bash
 docker compose pull

@@ -71,6 +71,8 @@ The MIDI file upload uses `XMLHttpRequest` (not `fetch`) because the Fetch API d
 ### `adapter-node` chosen for production
 `@sveltejs/adapter-node` outputs a Node.js server bundle to `frontend/build/`. In production, the Go binary could serve the static SvelteKit output directly (mounting the `build/` directory as a static file handler) for a single-binary deployment. The `adapter-static` option was considered but rejected because SvelteKit's dynamic routes (`[trackId]`, `[sessionId]`) require a server-side handler.
 
+*Superseded:* the app later set `ssr = false` globally, which makes it a pure SPA. Dynamic routes then work with `adapter-static` and `fallback: 'index.html'`: the client-side router resolves `[trackId]` / `[sessionId]` in the browser. The frontend now ships as an nginx image serving static files, with no Node runtime and no `ORIGIN` setting.
+
 ---
 
 ## Open Items / Future Work

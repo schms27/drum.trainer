@@ -101,7 +101,7 @@ Delete a track, all associated sessions and scores (via SQLite CASCADE), and the
 
 Submit a completed recording session. The backend:
 1. Loads target notes for the given `track_id`
-2. Runs the greedy nearest-neighbour alignment algorithm (±200ms window, per instrument group)
+2. Runs the closest-first alignment algorithm (per-note window of up to ±200ms, per instrument group — see `docs/architecture.md`)
 3. Persists the session, raw hits, and computed scores
 4. Returns the full result immediately
 
