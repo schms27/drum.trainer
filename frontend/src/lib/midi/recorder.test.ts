@@ -87,6 +87,14 @@ describe('createRecorder', () => {
 		expect(rec.hits[0]).toMatchObject({ note_number: 36, time_ms: 0, velocity: 100 });
 	});
 
+	it('offsets all hits by firstHitTimeMs', async () => {
+		const rec = await createRecorder('dev-1', { firstHitTimeMs: 2000 });
+		rec.arm();
+		input.dispatch(noteOnMsg(36, 100), 1000);
+		input.dispatch(noteOnMsg(38, 90), 1250);
+		expect(rec.hits.map((h) => h.time_ms)).toEqual([2000, 2250]);
+	});
+
 	it('records subsequent hits with relative timestamps', async () => {
 		const rec = await createRecorder('dev-1');
 		rec.arm();

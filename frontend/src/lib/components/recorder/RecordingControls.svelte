@@ -15,7 +15,8 @@
 		timeScale = 1,
 		bpm = 120,
 		timeSigNumerator = 4,
-		durationMs = 0
+		durationMs = 0,
+		firstHitTimeMs = 0
 	}: {
 		deviceId: string;
 		onFinished: (hits: RecordedHit[], startedAt: string, endedAt: string) => void;
@@ -27,6 +28,8 @@
 		bpm?: number;
 		timeSigNumerator?: number;
 		durationMs?: number;
+		/** Time (ms, practice tempo) the first hit is stamped with — the first target note. */
+		firstHitTimeMs?: number;
 	} = $props();
 
 	// Duration scaled to the current practice tempo.
@@ -67,9 +70,11 @@
 
 		try {
 			recorder = await createRecorder(deviceId, {
+				firstHitTimeMs,
 				onStarted() {
 					startedAt = new Date().toISOString();
-					recordingStartWallMs = Date.now();
+					// Back-date the clock so the timeline shows the first hit at its target time.
+					recordingStartWallMs = Date.now() - firstHitTimeMs;
 					recorderState = 'recording';
 					onFirstHit?.(audioCtx!.currentTime);
 				}

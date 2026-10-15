@@ -1,8 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -13,18 +15,6 @@ import (
 	"github.com/simu/drum-trainer/backend/models"
 	"github.com/simu/drum-trainer/backend/storage"
 )
-
-// allowedAudioMIME is the set of MIME types accepted for pilot track uploads.
-var allowedAudioMIME = map[string]bool{
-	"audio/mpeg":  true, // .mp3
-	"audio/wav":   true, // .wav
-	"audio/wave":  true, // .wav (alternate)
-	"audio/ogg":   true, // .ogg
-	"audio/flac":  true, // .flac
-	"audio/aac":   true, // .aac
-	"audio/x-m4a": true, // .m4a
-	"audio/mp4":   true, // .m4a / .mp4 audio
-}
 
 type pilotsHandler struct {
 	db       *sql.DB
@@ -53,10 +43,11 @@ func (h *pilotsHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, h.maxBytes)
-	if err := r.ParseMultipartForm(h.maxBytes); err != nil {
+	if err := r.ParseMultipartForm(multipartMemoryBytes); err != nil {
 		writeError(w, http.StatusRequestEntityTooLarge, "file too large or invalid form")
 		return
 	}
+	defer r.MultipartForm.RemoveAll()
 
 	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
@@ -71,26 +62,21 @@ func (h *pilotsHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Validate MIME type from the multipart Content-Type header.
-	mimeType := header.Header.Get("Content-Type")
-	// Strip any parameters (e.g. "audio/mpeg; charset=binary").
-	if i := strings.Index(mimeType, ";"); i >= 0 {
-		mimeType = strings.TrimSpace(mimeType[:i])
+	// Determine the MIME type from the file content, not the client header.
+	head, err := readHead(file, 512)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to read uploaded file")
+		return
 	}
-	mimeType = strings.ToLower(mimeType)
-	if !allowedAudioMIME[mimeType] {
+	mimeType := sniffAudioMIME(head)
+	if mimeType == "" {
 		writeError(w, http.StatusBadRequest, "unsupported file type — upload MP3, WAV, OGG, FLAC, AAC, or M4A")
 		return
 	}
 
-	data := make([]byte, header.Size)
-	if _, err := file.Read(data); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to read uploaded file")
-		return
-	}
-
+	// Stream to disk rather than buffering up to MAX_PILOT_SIZE_MB in memory.
 	storedName := storage.UniqueFilename(header.Filename)
-	filePath, err := h.store.Save(storedName, data)
+	filePath, size, err := h.store.SaveStream(storedName, io.MultiReader(bytes.NewReader(head), file))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save file")
 		return
@@ -101,7 +87,7 @@ func (h *pilotsHandler) create(w http.ResponseWriter, r *http.Request) {
 		Name:     name,
 		Filename: header.Filename,
 		FilePath: filePath,
-		FileSize: header.Size,
+		FileSize: size,
 		MimeType: mimeType,
 	}
 

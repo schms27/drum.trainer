@@ -35,6 +35,12 @@ export interface Recorder {
 export interface RecorderOptions {
 	/** Called the moment the first hit is received and the clock starts. */
 	onStarted?: () => void;
+	/**
+	 * Timestamp (ms) assigned to the first hit. Set this to the time of the
+	 * first target note so recorded hits share the target track's time base
+	 * even when the MIDI file has a lead-in before the first note.
+	 */
+	firstHitTimeMs?: number;
 }
 
 /**
@@ -70,7 +76,7 @@ export async function createRecorder(
 
 		// First hit while waiting — start the clock now.
 		if (state === 'waiting') {
-			startTime = event.timeStamp;
+			startTime = event.timeStamp - (options?.firstHitTimeMs ?? 0);
 			state = 'recording';
 			options?.onStarted?.();
 		}

@@ -63,7 +63,7 @@ describe('apiFetch', () => {
 			json: () => Promise.resolve({ error: 'track not found' }),
 		}));
 
-		const err = await apiFetch('/test').catch((e) => e);
+		const err = (await apiFetch('/test').catch((e) => e)) as ApiError;
 		expect(err).toBeInstanceOf(ApiError);
 		expect(err.status).toBe(404);
 		expect(err.message).toBe('track not found');
@@ -76,7 +76,7 @@ describe('apiFetch', () => {
 			json: () => Promise.resolve({ something: 'else' }),
 		}));
 
-		const err = await apiFetch('/test').catch((e) => e);
+		const err = (await apiFetch('/test').catch((e) => e)) as ApiError;
 		expect(err).toBeInstanceOf(ApiError);
 		expect(err.message).toBe('HTTP 500');
 	});
@@ -88,7 +88,7 @@ describe('apiFetch', () => {
 			json: () => Promise.reject(new SyntaxError('not JSON')),
 		}));
 
-		const err = await apiFetch('/test').catch((e) => e);
+		const err = (await apiFetch('/test').catch((e) => e)) as ApiError;
 		expect(err).toBeInstanceOf(ApiError);
 		expect(err.status).toBe(503);
 		expect(err.message).toBe('HTTP 503');

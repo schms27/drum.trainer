@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -23,10 +24,11 @@ type tracksHandler struct {
 func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, h.maxBytes)
 
-	if err := r.ParseMultipartForm(h.maxBytes); err != nil {
+	if err := r.ParseMultipartForm(multipartMemoryBytes); err != nil {
 		writeError(w, http.StatusRequestEntityTooLarge, "file too large or invalid form")
 		return
 	}
+	defer r.MultipartForm.RemoveAll()
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -35,9 +37,10 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Read file bytes.
-	data := make([]byte, header.Size)
-	if _, err := file.Read(data); err != nil {
+	// Read file bytes. A single Read is not guaranteed to fill the buffer, and
+	// header.Size is client-supplied, so read until EOF instead.
+	data, err := io.ReadAll(file)
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to read uploaded file")
 		return
 	}
@@ -74,7 +77,7 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 		Name:             parsed.Name,
 		Filename:         header.Filename,
 		FilePath:         filePath,
-		FileSize:         header.Size,
+		FileSize:         int64(len(data)),
 		DurationMs:       parsed.DurationMs,
 		NoteCount:        len(parsed.Notes),
 		PPQ:              parsed.PPQ,

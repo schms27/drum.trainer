@@ -1,10 +1,13 @@
 package storage
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
-	"time"
+	"strings"
 )
 
 // Store handles saving and reading uploaded MIDI files on disk.
@@ -30,6 +33,33 @@ func (s *Store) Save(filename string, data []byte) (string, error) {
 	return path, nil
 }
 
+// SaveStream copies r into a file named <filename> inside the store directory
+// without buffering it in memory. The data is written to a temporary file
+// first and renamed into place, so a failed copy never leaves a partial file.
+// Returns the path of the saved file and the number of bytes written.
+func (s *Store) SaveStream(filename string, r io.Reader) (string, int64, error) {
+	path := filepath.Join(s.Dir, filename)
+	tmp, err := os.CreateTemp(s.Dir, ".upload-*")
+	if err != nil {
+		return "", 0, fmt.Errorf("create temp file: %w", err)
+	}
+	tmpName := tmp.Name()
+
+	n, err := io.Copy(tmp, r)
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		os.Remove(tmpName)
+		return "", 0, fmt.Errorf("write file %q: %w", path, err)
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		os.Remove(tmpName)
+		return "", 0, fmt.Errorf("rename to %q: %w", path, err)
+	}
+	return path, n, nil
+}
+
 // Read reads and returns the contents of the file at the given absolute path.
 func (s *Store) Read(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
@@ -48,9 +78,27 @@ func (s *Store) Delete(path string) error {
 	return nil
 }
 
-// UniqueFilename generates a collision-resistant storage filename while
-// preserving the original file extension.
+// UniqueFilename generates a random storage filename while preserving the
+// original file extension (if it is a plain alphanumeric extension).
 func UniqueFilename(original string) string {
-	ext := filepath.Ext(original)
-	return fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("crypto/rand failed: %v", err))
+	}
+	return hex.EncodeToString(b) + safeExt(original)
+}
+
+// safeExt returns the lower-cased extension of name, or "" if it contains
+// anything other than ASCII letters and digits or is unreasonably long.
+func safeExt(name string) string {
+	ext := strings.ToLower(filepath.Ext(name))
+	if len(ext) < 2 || len(ext) > 8 {
+		return ""
+	}
+	for _, c := range ext[1:] {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') {
+			return ""
+		}
+	}
+	return ext
 }

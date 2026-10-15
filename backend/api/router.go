@@ -18,8 +18,13 @@ func NewRouter(db *sql.DB, store *storage.Store, maxUploadBytes int64, cfg confi
 	r := chi.NewRouter()
 
 	// Middleware stack.
+	// RealIP rewrites RemoteAddr from X-Real-IP / X-Forwarded-For so that the
+	// per-IP rate limiters see the client, not the reverse proxy. The backend
+	// must therefore only be reachable through the trusted proxy.
+	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.SetHeader("X-Content-Type-Options", "nosniff"))
 	r.Use(httprate.LimitByIP(200, time.Minute))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:4173"},

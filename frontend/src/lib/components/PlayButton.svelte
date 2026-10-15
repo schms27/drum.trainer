@@ -11,7 +11,7 @@
 		hits: PlayableHit[];
 		label?: string;
 		/** When provided, playback starts on the next bar-1 beat of this metronome. */
-		metronome?: Metronome;
+		metronome?: Metronome | null;
 		/** Playback speed ratio relative to the track's native tempo. 0.5 = half speed, 2 = double. */
 		speed?: number;
 	} = $props();

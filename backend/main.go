@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/simu/drum-trainer/backend/api"
 	"github.com/simu/drum-trainer/backend/config"
@@ -38,9 +43,39 @@ func main() {
 	maxPilotBytes := cfg.MaxPilotSizeMB  << 20
 	router := api.NewRouter(database, store, maxBytes, cfg, maxPilotBytes)
 
-	addr := fmt.Sprintf(":%s", cfg.Port)
-	log.Printf("drum-trainer backend listening on http://localhost%s", addr)
-	if err := http.ListenAndServe(addr, router); err != nil {
-		log.Fatalf("server error: %v", err)
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%s", cfg.Port),
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+		// Generous read/write limits: pilot uploads and audio streaming can be
+		// up to MAX_PILOT_SIZE_MB over slow connections.
+		ReadTimeout:  5 * time.Minute,
+		WriteTimeout: 5 * time.Minute,
+		IdleTimeout:  2 * time.Minute,
+	}
+
+	// Shut down gracefully on SIGINT/SIGTERM (docker stop), letting in-flight
+	// requests finish before the database is closed.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Printf("drum-trainer backend listening on http://localhost%s", srv.Addr)
+		serverErr <- srv.ListenAndServe()
+	}()
+
+	select {
+	case err := <-serverErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("server error: %v", err)
+		}
+	case <-ctx.Done():
+		log.Printf("shutting down…")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("graceful shutdown failed: %v", err)
+		}
 	}
 }

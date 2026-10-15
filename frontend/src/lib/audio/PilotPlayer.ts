@@ -68,8 +68,10 @@ export class PilotPlayer {
 	/**
 	 * Start all pilots at the given AudioContext time (defaults to now).
 	 * Pass `contextTime` = the same value you anchor your MIDI clock to.
+	 * `offsetSec` skips into the audio (in original-tempo seconds), so playback
+	 * can start at the first target note rather than at the top of the file.
 	 */
-	startAll(contextTime?: number, playbackRate = 1): void {
+	startAll(contextTime?: number, playbackRate = 1, offsetSec = 0): void {
 		if (this.playing) this.stopAll();
 		this.playbackRate = playbackRate;
 		this.startContextTime = contextTime ?? this.ctx.currentTime;
@@ -79,7 +81,8 @@ export class PilotPlayer {
 			src.buffer = p.buffer;
 			src.playbackRate.value = this.playbackRate;
 			src.connect(p.gain);
-			src.start(this.startContextTime);
+			// offsetSec is in buffer time (original tempo), independent of playbackRate.
+			src.start(this.startContextTime, Math.min(offsetSec, p.buffer.duration));
 			p.source = src;
 		}
 		this.playing = true;

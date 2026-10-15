@@ -53,9 +53,13 @@
 		}
 	}
 
+	// The first hit is assumed to be the first target note, which may not be at
+	// 0 ms if the MIDI file has a lead-in. Notes arrive sorted by time.
+	const firstTargetMs = track.notes[0]?.time_ms ?? 0;
+
 	function handleFirstHit(contextTime: number) {
 		if (!pilotPlayer) return;
-		pilotPlayer.startAll(contextTime, currentBpm / track.bpm);
+		pilotPlayer.startAll(contextTime, currentBpm / track.bpm, firstTargetMs / 1000);
 	}
 
 	function handleRecordingStop() {
@@ -178,6 +182,7 @@
 				bpm={track.bpm}
 				timeSigNumerator={track.time_sig_numerator}
 				durationMs={track.duration_ms}
+				firstHitTimeMs={firstTargetMs * (track.bpm / currentBpm)}
 			/>
 		{/if}
 		{#if submitError}
