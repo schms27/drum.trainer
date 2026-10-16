@@ -1,8 +1,14 @@
 name: Tests
 
+# Runs on pull requests, and is reused by docker.yml (pushes to main) and
+# release.yml so every build and release is gated on the same checks.
 on:
   pull_request:
     branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   backend:

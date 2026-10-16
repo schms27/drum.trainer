@@ -1,0 +1,67 @@
+name: Build images
+
+# Reusable workflow: builds and pushes the backend and frontend images.
+#
+# Called by docker.yml for pushes to main (tags: latest, <sha>) and by
+# release.yml for releases (tags: 1.2.3, 1.2, 1, <sha>). Releases pass the tag
+# as `ref` because a tag pushed with GITHUB_TOKEN does not trigger docker.yml.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to build, e.g. refs/tags/v1.2.3 (default: the triggering ref)"
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and push ${{ matrix.component }} image
+    runs-on: ubuntu-26.04
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          # Take ref and sha from the checkout, not the workflow run, so a
+          # release build is tagged with the release version and commit.
+          context: git
+          images: ghcr.io/${{ github.repository_owner }}/drum-trainer-${{ matrix.component }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./${{ matrix.component }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: APP_VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,scope=${{ matrix.component }},mode=max

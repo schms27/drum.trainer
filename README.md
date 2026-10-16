@@ -178,32 +178,45 @@ Migrations run automatically on startup. Both SQLite and PostgreSQL migration se
 
 ## Releasing a New Version
 
-Releases are driven by git tags. Pushing a tag triggers the CI pipeline, which runs all tests and publishes versioned Docker images to the GitHub Container Registry (`ghcr.io/schms27/drum-trainer-backend` and `ghcr.io/schms27/drum-trainer-frontend`).
+Releases are one click: **Actions → Release → Run workflow** on `main`, or from a terminal:
 
 ```bash
-git tag v1.2.3
-git push origin v1.2.3
+gh workflow run release.yml
 ```
 
-This produces the following image tags for both `drum-trainer-backend` and `drum-trainer-frontend`:
+The [Release workflow](.github/workflows/release.yml):
+
+1. Runs all tests.
+2. Picks the next version from the commits since the last release, using [git-cliff](https://git-cliff.org) and [`cliff.toml`](cliff.toml): commits starting with *Add*, *Implement*, *Support*, … bump the minor version, a commit containing *BREAKING* bumps the major version, everything else bumps the patch version. Choose `patch`, `minor` or `major` in the run form to override.
+3. Regenerates [`CHANGELOG.md`](CHANGELOG.md), commits it to `main` and tags the commit (e.g. `v1.2.3`).
+4. Creates a [GitHub Release](https://github.com/schms27/drum.trainer/releases) with the notes for that version.
+5. Builds and pushes versioned images to the GitHub Container Registry (`ghcr.io/schms27/drum-trainer-backend` and `ghcr.io/schms27/drum-trainer-frontend`).
+
+Release notes are built from commit subjects, so a clear first line ("Add count-in before recording", "Fix tom mapping") is all that's needed. Preview what the next release would contain:
+
+```bash
+npx git-cliff@2.14.2 --unreleased --bump
+```
+
+Each release produces these image tags for both images:
 
 | Tag | Example |
 |---|---|
 | Exact version | `1.2.3` |
 | Major.minor | `1.2` |
-| Major | `1` |
+| Major (from 1.0.0 on) | `1` |
 | Short SHA | `a3f9c12` |
 
-`latest` is only updated on pushes to `main`, not on tag pushes.
+Every push to `main` also publishes `latest` and a short-SHA tag.
 
-To roll back, set `DRUM_TRAINER_VERSION` to the previous version and run the same commands. Migrations only move forward, so roll back across a release that added a migration only if you also restore a database backup.
-
-To deploy the new version, set `DRUM_TRAINER_VERSION` in your `.env` (or leave it unset to track `latest`) and run:
+To deploy a release, set `DRUM_TRAINER_VERSION` in your `.env` (or leave it unset to track `latest`) and run:
 
 ```bash
 docker compose pull
 docker compose up -d
 ```
+
+To roll back, set `DRUM_TRAINER_VERSION` to the previous version and run the same commands. Migrations only move forward, so roll back across a release that added a migration only if you also restore a database backup.
 
 ## License
 
