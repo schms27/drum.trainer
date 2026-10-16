@@ -22,7 +22,7 @@ services:
       retries: 10
 
   backend:
-    image: codeberg.org/trashtr00per/drum-trainer-backend:${DRUM_TRAINER_VERSION:-latest}
+    image: ghcr.io/schms27/drum-trainer-backend:${DRUM_TRAINER_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -45,7 +45,7 @@ services:
       retries: 5
 
   frontend:
-    image: codeberg.org/trashtr00per/drum-trainer-frontend:${DRUM_TRAINER_VERSION:-latest}
+    image: ghcr.io/schms27/drum-trainer-frontend:${DRUM_TRAINER_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       - backend

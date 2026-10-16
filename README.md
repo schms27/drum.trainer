@@ -178,7 +178,7 @@ Migrations run automatically on startup. Both SQLite and PostgreSQL migration se
 
 ## Releasing a New Version
 
-Releases are driven by git tags. Pushing a tag triggers the CI pipeline, which runs all tests and publishes versioned Docker images to the Codeberg registry.
+Releases are driven by git tags. Pushing a tag triggers the CI pipeline, which runs all tests and publishes versioned Docker images to the GitHub Container Registry (`ghcr.io/schms27/drum-trainer-backend` and `ghcr.io/schms27/drum-trainer-frontend`).
 
 ```bash
 git tag v1.2.3
