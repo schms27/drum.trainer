@@ -1,41 +1,70 @@
 <script lang="ts">
+	import { Plus } from '@lucide/svelte';
 	import MidiUpload from '$lib/components/upload/MidiUpload.svelte';
 	import TrackList from '$lib/components/tracks/TrackList.svelte';
-	import type { TrackWithNotes } from '$lib/types/track';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import type { Track, TrackWithNotes } from '$lib/types/track';
+	import type { PageData } from './$types';
 
-	let refreshTrigger = $state(0);
-	let drumChannel = $state(10);
+	let { data }: { data: PageData } = $props();
 
-	function handleUploaded(_track: TrackWithNotes) {
-		refreshTrigger++;
+	let tracks = $state<Track[]>(data.tracks);
+	let showUpload = $state(false);
+
+	function handleUploaded(track: TrackWithNotes) {
+		const { notes: _notes, ...rest } = track;
+		tracks = [rest, ...tracks];
+		showUpload = false;
+	}
+
+	function handleDeleted(id: number) {
+		tracks = tracks.filter((t) => t.id !== id);
 	}
 </script>
 
-<svelte:head><title>Tracks — Drum Trainer</title></svelte:head>
+<svelte:head><title>Library — Drum Trainer</title></svelte:head>
 
-<div class="flex flex-col gap-10">
-	<div>
-		<h1 class="text-2xl font-bold text-white mb-2">Upload a Target Track</h1>
-		<p class="text-zinc-400 text-sm mb-4">
-			Upload a standard MIDI file (.mid) to use as your practice target.
-		</p>
-		<div class="flex items-center gap-2 mb-5">
-			<label for="drum-channel" class="text-zinc-300 text-sm">Extract drum notes from channel</label>
-			<select
-				id="drum-channel"
-				bind:value={drumChannel}
-				class="bg-zinc-700 border border-zinc-600 text-white text-sm rounded px-2 py-1 focus:outline-none focus:border-indigo-500"
-			>
-				{#each Array.from({ length: 16 }, (_, i) => i + 1) as ch}
-					<option value={ch}>{ch}{ch === 10 ? ' (GM drums)' : ''}</option>
-				{/each}
-			</select>
-		</div>
-		<MidiUpload onUploaded={handleUploaded} channel={drumChannel} />
-	</div>
+{#if tracks.length === 0}
+	<PageHeader title="Welcome to Drum Trainer" subtitle="Play along with a MIDI drum track on your e-drum kit and see how accurately you hit every note." />
 
-	<div>
-		<h2 class="text-xl font-semibold text-white mb-4">Your Tracks</h2>
-		<TrackList {refreshTrigger} />
-	</div>
-</div>
+	<ol class="grid gap-4 sm:grid-cols-3 text-sm">
+		<li class="bg-card border border-line rounded-xl p-4">
+			<p class="font-semibold text-fg">1. Add a track</p>
+			<p class="text-fg-muted mt-1">Upload a MIDI file (.mid) with the drum part you want to practise.</p>
+		</li>
+		<li class="bg-card border border-line rounded-xl p-4">
+			<p class="font-semibold text-fg">2. Play along</p>
+			<p class="text-fg-muted mt-1">Connect your e-drum kit by USB and play the track in Chrome or Edge.</p>
+		</li>
+		<li class="bg-card border border-line rounded-xl p-4">
+			<p class="font-semibold text-fg">3. Review</p>
+			<p class="text-fg-muted mt-1">See which notes you hit, missed or played early or late.</p>
+		</li>
+	</ol>
+
+	<Card title="Add your first track">
+		<MidiUpload onUploaded={handleUploaded} />
+	</Card>
+{:else}
+	<PageHeader title="Library" subtitle="{tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}">
+		{#snippet actions()}
+			<Button variant={showUpload ? 'secondary' : 'primary'} onclick={() => (showUpload = !showUpload)} aria-expanded={showUpload}>
+				{#if showUpload}
+					Cancel
+				{:else}
+					<Plus size={16} aria-hidden="true" /> Add track
+				{/if}
+			</Button>
+		{/snippet}
+	</PageHeader>
+
+	{#if showUpload}
+		<Card title="Add a track" description="Upload a MIDI file (.mid) with the drum part you want to practise.">
+			<MidiUpload onUploaded={handleUploaded} />
+		</Card>
+	{/if}
+
+	<TrackList {tracks} onDeleted={handleDeleted} />
+{/if}

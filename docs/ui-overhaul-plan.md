@@ -1,7 +1,9 @@
 # UI Overhaul Plan
 
 Branch: `ui-overhaul`. Goal: make the app self-explanatory and easier to use.
-Decisions below were settled on 2026-10-16; nothing here is implemented yet.
+Decisions below were settled on 2026-10-16.
+
+**Status:** phase 1 implemented on this branch; phases 2–4 not started.
 
 ## Problems found (review of every page, desktop + phone)
 
@@ -39,7 +41,7 @@ Decisions below were settled on 2026-10-16; nothing here is implemented yet.
 
 ## Phases
 
-### Phase 1 — Foundation and quick fixes (frontend only)
+### Phase 1 — Foundation and quick fixes (frontend only) ✅
 - Semantic color tokens with light/dark themes and a theme toggle.
 - Shared components: page container, button, card, dialog (replaces `confirm()`), empty state; lucide icons.
 - Header: active-page highlight, mobile menu, Library · Progress navigation (Progress initially links the existing pages).

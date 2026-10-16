@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { MatchedHit, GhostHit, InstrumentBreakdown } from '$lib/types/session';
 	import type { NoteEvent } from '$lib/types/track';
+	import { timingTone, toneColor, formatOffset, ON_TIME_MS, CLOSE_MS } from '$lib/score-format';
 
 	let {
 		targetNotes,
@@ -28,6 +29,7 @@
 	const LABEL_W = 90;
 	const MARGIN = { top: 8, bottom: 16 };
 	const DOT_R = 5;
+	const CROSS = 4;
 
 	const groups = $derived(safeBreakdown.map((b) => b.instrument));
 	const svgH = $derived(MARGIN.top + groups.length * ROW_H + MARGIN.bottom);
@@ -44,7 +46,11 @@
 		return MARGIN.top + i * ROW_H + ROW_H / 2;
 	}
 
-	// Beat/bar grid: beat every 60000/bpm ms, bar every 4 beats (4/4 assumed).
+	// Target notes that were matched, keyed by note number and time. Every
+	// other target note was missed and gets a cross instead of a circle.
+	const matchedKeys = $derived(new Set(safeHits.map((h) => `${h.note_number}@${h.target_time_ms}`)));
+	const isMissed = (note: NoteEvent) => !matchedKeys.has(`${note.note_number}@${note.time_ms}`);
+
 	const beatMs = $derived(bpm > 0 ? 60000 / bpm : 0);
 	const beatLines = $derived(
 		(() => {
@@ -56,133 +62,120 @@
 			return lines;
 		})()
 	);
-
-	// Color of the matched dot by offset magnitude
-	function offsetDotColor(offset: number) {
-		const a = Math.abs(offset);
-		if (a <= 20) return '#4ade80';
-		if (a <= 50) return '#facc15';
-		return '#f87171';
-	}
 </script>
 
-<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 overflow-x-auto">
-	<h3 class="text-sm font-semibold text-zinc-300 mb-4">Timeline</h3>
+<div class="bg-card border border-line rounded-xl p-5 overflow-x-auto">
+	<h2 class="text-sm font-semibold text-fg mb-4">Note by note</h2>
 	{#if targetNotes.length === 0}
-		<p class="text-zinc-500 text-sm">No data.</p>
+		<p class="text-fg-subtle text-sm">No data.</p>
 	{:else}
-		<svg viewBox="0 0 {WIDTH} {svgH}" class="w-full min-w-[400px]" aria-label="Hit timeline">
+		<svg viewBox="0 0 {WIDTH} {svgH}" class="w-full min-w-[400px]" role="img" aria-label="Every note in the track and how you played it">
 			<!-- Row backgrounds -->
-			{#each groups as group, i}
+			{#each groups as group, i (group)}
 				<rect
-					x={0} y={MARGIN.top + i * ROW_H}
-					width={WIDTH} height={ROW_H}
-					fill={i % 2 === 0 ? '#27272a' : '#1c1c1e'}
+					x={0}
+					y={MARGIN.top + i * ROW_H}
+					width={WIDTH}
+					height={ROW_H}
+					style:fill={i % 2 === 0 ? 'var(--chart-row)' : 'var(--chart-row-alt)'}
 				/>
-				<text x={LABEL_W - 8} y={rowY(i) + 4} text-anchor="end" fill="#a1a1aa" font-size="11"
-					>{group}</text
-				>
+				<text x={LABEL_W - 8} y={rowY(i) + 4} text-anchor="end" style:fill="var(--fg-muted)" font-size="11">{group}</text>
 				<line
-					x1={LABEL_W} y1={MARGIN.top + (i + 1) * ROW_H}
-					x2={WIDTH} y2={MARGIN.top + (i + 1) * ROW_H}
-					stroke="#3f3f46"
+					x1={LABEL_W}
+					y1={MARGIN.top + (i + 1) * ROW_H}
+					x2={WIDTH}
+					y2={MARGIN.top + (i + 1) * ROW_H}
+					style:stroke="var(--chart-grid)"
 				/>
 			{/each}
 
 			<!-- Beat / bar grid lines (drawn before notes so they're behind) -->
-			{#each beatLines as line}
+			{#each beatLines as line (line.ms)}
 				{@const x = xOf(line.ms)}
 				{#if x >= LABEL_W && x <= WIDTH}
 					<line
-						x1={x} y1={MARGIN.top}
-						x2={x} y2={MARGIN.top + groups.length * ROW_H}
-						stroke={line.isBar ? '#52525b' : '#3f3f46'}
+						x1={x}
+						y1={MARGIN.top}
+						x2={x}
+						y2={MARGIN.top + groups.length * ROW_H}
+						style:stroke={line.isBar ? 'var(--chart-grid-strong)' : 'var(--chart-grid)'}
 						stroke-width={line.isBar ? 1 : 0.5}
-						opacity={line.isBar ? 0.9 : 0.5}
 					/>
 				{/if}
 			{/each}
 
-			<!-- Target notes: open circles -->
+			<!-- Target notes: open circles; missed notes: crosses -->
 			{#each targetNotes as note}
 				{@const gi = groups.indexOf(note.instrument)}
 				{#if gi >= 0}
-					<circle
-						cx={xOf(note.time_ms)}
-						cy={rowY(gi)}
-						r={DOT_R}
-						fill="none"
-						stroke="#6366f1"
-						stroke-width="1.5"
-						opacity="0.7"
-					/>
+					{@const cx = xOf(note.time_ms)}
+					{@const cy = rowY(gi)}
+					{#if isMissed(note)}
+						<g style:stroke="var(--bad)" stroke-width="2" stroke-linecap="round">
+							<line x1={cx - CROSS} y1={cy - CROSS} x2={cx + CROSS} y2={cy + CROSS} />
+							<line x1={cx - CROSS} y1={cy + CROSS} x2={cx + CROSS} y2={cy - CROSS} />
+							<title>{note.instrument} — missed</title>
+						</g>
+					{:else}
+						<circle {cx} {cy} r={DOT_R} fill="none" style:stroke="var(--chart-target)" stroke-width="1.5" />
+					{/if}
 				{/if}
 			{/each}
 
-			<!-- Matched hits: filled circles, colored by offset -->
+			<!-- Matched hits: filled circles, coloured by offset -->
 			{#each safeHits as hit}
 				{@const gi = groups.indexOf(hit.instrument)}
 				{#if gi >= 0}
-					<circle
-						cx={xOf(hit.recorded_time_ms)}
-						cy={rowY(gi)}
-						r={DOT_R - 1}
-						fill={offsetDotColor(hit.offset_ms)}
-						opacity="0.9"
-					>
-						<title>{hit.instrument} | offset: {hit.offset_ms.toFixed(1)}ms</title>
+					<circle cx={xOf(hit.recorded_time_ms)} cy={rowY(gi)} r={DOT_R - 1} style:fill={toneColor[timingTone(hit.offset_ms)]}>
+						<title>{hit.instrument} — {formatOffset(hit.offset_ms)} ({hit.offset_ms > 0 ? 'late' : hit.offset_ms < 0 ? 'early' : 'exact'})</title>
 					</circle>
 				{/if}
 			{/each}
 
-			<!-- Ghost hits: hollow red circles -->
+			<!-- Extra hits: hollow squares -->
 			{#each safeGhosts as ghost}
 				{@const gi = groups.indexOf(ghost.instrument)}
 				{#if gi >= 0}
-					<circle
-						cx={xOf(ghost.recorded_time_ms)}
-						cy={rowY(gi)}
-						r={DOT_R - 1}
+					<rect
+						x={xOf(ghost.recorded_time_ms) - DOT_R + 1}
+						y={rowY(gi) - DOT_R + 1}
+						width={(DOT_R - 1) * 2}
+						height={(DOT_R - 1) * 2}
 						fill="none"
-						stroke="#f87171"
+						style:stroke="var(--bad)"
 						stroke-width="1.5"
-						opacity="0.85"
 					>
-						<title>{ghost.instrument} | ghost note</title>
-					</circle>
+						<title>{ghost.instrument} — extra hit (no matching note)</title>
+					</rect>
 				{/if}
 			{/each}
 
 			<!-- Label column divider -->
-			<line x1={LABEL_W} y1={0} x2={LABEL_W} y2={svgH} stroke="#52525b" />
+			<line x1={LABEL_W} y1={0} x2={LABEL_W} y2={svgH} style:stroke="var(--chart-grid-strong)" />
 		</svg>
 
-		<div class="flex flex-wrap gap-5 mt-3 text-xs text-zinc-500 justify-center">
-			<span>
-				<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-					<circle cx="5" cy="5" r="4" fill="none" stroke="#6366f1" stroke-width="1.5" />
-				</svg>Target
+		<div class="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-xs text-fg-muted justify-center">
+			<span class="inline-flex items-center gap-1">
+				<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="none" style:stroke="var(--chart-target)" stroke-width="1.5" /></svg>Note
 			</span>
-			<span>
-				<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-					<circle cx="5" cy="5" r="3" fill="#4ade80" />
-				</svg>Hit (±20ms)
+			<span class="inline-flex items-center gap-1">
+				<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" style:fill="var(--good)" /></svg>On time (within {ON_TIME_MS} ms)
 			</span>
-			<span>
-				<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-					<circle cx="5" cy="5" r="3" fill="#facc15" />
-				</svg>Hit (±50ms)
+			<span class="inline-flex items-center gap-1">
+				<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" style:fill="var(--warn)" /></svg>Close (within {CLOSE_MS} ms)
 			</span>
-			<span>
-				<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-					<circle cx="5" cy="5" r="3" fill="#f87171" />
-				</svg>Late/Early
+			<span class="inline-flex items-center gap-1">
+				<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" style:fill="var(--bad)" /></svg>Early or late
 			</span>
-			<span>
-				<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-					<circle cx="5" cy="5" r="3" fill="none" stroke="#f87171" stroke-width="1.5" />
-				</svg>Ghost
+			<span class="inline-flex items-center gap-1">
+				<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"
+					><g style:stroke="var(--bad)" stroke-width="2" stroke-linecap="round"><line x1="2" y1="2" x2="8" y2="8" /><line x1="2" y1="8" x2="8" y2="2" /></g></svg
+				>Missed
+			</span>
+			<span class="inline-flex items-center gap-1">
+				<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"><rect x="2" y="2" width="6" height="6" fill="none" style:stroke="var(--bad)" stroke-width="1.5" /></svg>Extra hit
 			</span>
 		</div>
+		<p class="text-xs text-fg-subtle mt-2 text-center">Hover a mark for details.</p>
 	{/if}
 </div>

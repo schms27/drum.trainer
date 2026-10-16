@@ -1,8 +1,11 @@
 <script lang="ts">
 	import WeeklyBars from '$lib/components/stats/WeeklyBars.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import ProgressTabs from '$lib/components/layout/ProgressTabs.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	// svelte-ignore state_referenced_locally
 	const { stats } = data;
 	const { weekly, totals } = stats;
 
@@ -14,50 +17,26 @@
 	}
 </script>
 
-<svelte:head><title>Stats — Drum Trainer</title></svelte:head>
+<svelte:head><title>Practice time — Drum Trainer</title></svelte:head>
 
-<div class="flex flex-col gap-8">
-	<div>
-		<h1 class="text-2xl font-bold text-white">Your Statistics</h1>
-		<p class="text-zinc-400 text-sm mt-1">Past 12 months</p>
+<PageHeader title="Progress" subtitle="How much you practised over the past 12 months." />
+<ProgressTabs />
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+	<div class="bg-card border border-line rounded-xl p-5">
+		<p class="text-xs font-medium text-fg-muted">Time played</p>
+		<p class="text-3xl font-bold mt-1 text-fg tabular-nums">{fmtMinutes(totals.minutes_played)}</p>
 	</div>
-
-	<!-- Totals -->
-	<div class="grid grid-cols-3 gap-4">
-		<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
-			<p class="text-zinc-400 text-xs uppercase tracking-wider mb-1">Sessions</p>
-			<p class="text-3xl font-bold text-white">{totals.sessions}</p>
-		</div>
-		<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
-			<p class="text-zinc-400 text-xs uppercase tracking-wider mb-1">Time Played</p>
-			<p class="text-3xl font-bold text-indigo-400">{fmtMinutes(totals.minutes_played)}</p>
-		</div>
-		<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
-			<p class="text-zinc-400 text-xs uppercase tracking-wider mb-1">Tracks Practiced</p>
-			<p class="text-3xl font-bold text-white">{totals.tracks_practiced}</p>
-		</div>
+	<div class="bg-card border border-line rounded-xl p-5">
+		<p class="text-xs font-medium text-fg-muted">Takes recorded</p>
+		<p class="text-3xl font-bold mt-1 text-fg tabular-nums">{totals.sessions}</p>
 	</div>
-
-	<!-- Weekly charts -->
-	<WeeklyBars
-		data={weekly}
-		valueKey="minutes_played"
-		label="Minutes played per week"
-		color="#6366f1"
-		unit="min"
-	/>
-
-	<WeeklyBars
-		data={weekly}
-		valueKey="session_count"
-		label="Sessions per week"
-		color="#22d3ee"
-	/>
-
-	<WeeklyBars
-		data={weekly}
-		valueKey="tracks_practiced"
-		label="Distinct tracks per week"
-		color="#a78bfa"
-	/>
+	<div class="bg-card border border-line rounded-xl p-5">
+		<p class="text-xs font-medium text-fg-muted">Different tracks</p>
+		<p class="text-3xl font-bold mt-1 text-fg tabular-nums">{totals.tracks_practiced}</p>
+	</div>
 </div>
+
+<WeeklyBars data={weekly} valueKey="minutes_played" label="Minutes played per week" unit="min" />
+<WeeklyBars data={weekly} valueKey="session_count" label="Takes per week" />
+<WeeklyBars data={weekly} valueKey="tracks_practiced" label="Different tracks per week" />

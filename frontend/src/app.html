@@ -5,8 +5,23 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="description" content="Practice drumming with MIDI tracks and get scored on timing accuracy." />
-		<meta name="theme-color" content="#18181b" />
 		<title>Drum Trainer</title>
+		<style>
+			/* The app stylesheet is loaded by JavaScript, so paint the page
+			   background right away to avoid a white flash in dark mode. */
+			html { background: #f4f4f5; }
+			html[data-theme='dark'] { background: #09090b; color-scheme: dark; }
+		</style>
+		<script>
+			// Apply the saved/system theme before first paint to avoid a flash.
+			// Kept in sync with $lib/theme.svelte.ts.
+			(function () {
+				var pref = null;
+				try { pref = localStorage.getItem('drum-trainer:theme'); } catch (e) {}
+				var dark = pref === 'dark' || (pref !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+				document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

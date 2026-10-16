@@ -1,20 +1,33 @@
 <script lang="ts">
+	import { RefreshCw } from '@lucide/svelte';
 	import { listMidiInputs, type MidiDevice } from '$lib/midi/recorder';
+	import Notice from '$lib/components/ui/Notice.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 
 	const STORAGE_KEY = 'drum-trainer:default-midi-device';
 
-	let {
-		selectedId = $bindable(''),
-		onError
-	}: {
-		selectedId?: string;
-		onError?: (msg: string) => void;
-	} = $props();
+	let { selectedId = $bindable('') }: { selectedId?: string } = $props();
 
 	let devices = $state<MidiDevice[]>([]);
 	let supported = $state(true);
 	let secureContext = $state(true);
 	let loading = $state(true);
+
+	async function scan() {
+		loading = true;
+		const list = await listMidiInputs();
+		devices = list;
+		if (!list.some((d) => d.id === selectedId)) {
+			let saved: string | null = null;
+			try {
+				saved = localStorage.getItem(STORAGE_KEY);
+			} catch {
+				// Storage unavailable — just pick the first device.
+			}
+			selectedId = saved && list.some((d) => d.id === saved) ? saved : (list[0]?.id ?? '');
+		}
+		loading = false;
+	}
 
 	$effect(() => {
 		if (!navigator.requestMIDIAccess) {
@@ -23,50 +36,52 @@
 			loading = false;
 			return;
 		}
-		listMidiInputs().then((list) => {
-			devices = list;
-			if (list.length > 0 && !selectedId) {
-				const saved = localStorage.getItem(STORAGE_KEY);
-				selectedId = saved && list.some((d) => d.id === saved) ? saved : list[0].id;
-			}
-			loading = false;
-		});
+		scan();
 	});
 
 	function handleChange(e: Event) {
-		const id = (e.target as HTMLSelectElement).value;
-		localStorage.setItem(STORAGE_KEY, id);
+		try {
+			localStorage.setItem(STORAGE_KEY, (e.target as HTMLSelectElement).value);
+		} catch {
+			// Not remembered, but still selected.
+		}
 	}
 </script>
 
-<div class="flex flex-col gap-2">
-	<label class="text-sm text-zinc-400 font-medium" for="midi-device">MIDI Input Device</label>
-
-	{#if !supported}
+{#if !supported}
+	<Notice variant="warning">
 		{#if !secureContext}
-			<p class="text-amber-400 text-sm">
-				Web MIDI API requires HTTPS. Open the app over <code class="font-mono">https://</code> or
-				access it via <code class="font-mono">localhost</code>.
-			</p>
+			Your browser only allows MIDI access over a secure connection. Open the app via
+			<code class="font-mono">https://</code> (or on <code class="font-mono">localhost</code>).
 		{:else}
-			<p class="text-amber-400 text-sm">
-				Web MIDI API is not supported in this browser. Please use Chrome or Edge.
-			</p>
+			This browser can't read MIDI devices. Use Chrome or Edge to record.
 		{/if}
-	{:else if loading}
-		<p class="text-zinc-500 text-sm">Scanning for MIDI devices…</p>
-	{:else if devices.length === 0}
-		<p class="text-zinc-500 text-sm">No MIDI devices found. Connect your e-drum and refresh.</p>
-	{:else}
+	</Notice>
+{:else if loading}
+	<p class="text-sm text-fg-muted">Looking for MIDI devices…</p>
+{:else if devices.length === 0}
+	<div class="flex flex-col gap-3">
+		<Notice variant="warning">
+			No e-drum kit found. Connect it with a USB cable, switch it on, then scan again. If the
+			browser asked for permission to use MIDI devices, allow it.
+		</Notice>
+		<div><Button size="sm" onclick={scan}><RefreshCw size={14} aria-hidden="true" /> Scan again</Button></div>
+	</div>
+{:else}
+	<div class="flex flex-wrap items-center gap-2">
+		<label class="sr-only" for="midi-device">MIDI input device</label>
 		<select
 			id="midi-device"
 			bind:value={selectedId}
 			onchange={handleChange}
-			class="bg-zinc-700 border border-zinc-600 text-white rounded-lg px-3 py-2 text-sm"
+			class="bg-control text-fg rounded-lg px-3 h-10 text-sm border border-line min-w-0 max-w-full focus:outline-none focus:ring-2 focus:ring-accent"
 		>
 			{#each devices as device (device.id)}
 				<option value={device.id}>{device.name}</option>
 			{/each}
 		</select>
-	{/if}
-</div>
+		<Button variant="ghost" size="sm" onclick={scan} aria-label="Scan for MIDI devices again" title="Scan again">
+			<RefreshCw size={14} aria-hidden="true" />
+		</Button>
+	</div>
+{/if}

@@ -4,9 +4,14 @@
 	import TimingHistogram from '$lib/components/results/TimingHistogram.svelte';
 	import TimelineView from '$lib/components/results/TimelineView.svelte';
 	import PlayButton from '$lib/components/PlayButton.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import { RotateCcw } from '@lucide/svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	// svelte-ignore state_referenced_locally
 	const { sessionResult, track } = data;
 	const { session, score } = sessionResult;
 
@@ -20,41 +25,38 @@
 
 <svelte:head><title>Results: {track.name} — Drum Trainer</title></svelte:head>
 
-<div class="flex flex-col gap-8">
-	<div>
-		<a href="/session/{session.track_id}" class="text-zinc-500 hover:text-zinc-300 text-sm transition">
-			← Practice again
-		</a>
-		<h1 class="text-2xl font-bold text-white mt-2">Results — {track.name}</h1>
-		<p class="text-zinc-400 text-sm mt-1">
-			{session.hit_count} hits recorded · Session #{session.id}
-		</p>
-		<div class="flex gap-2 mt-3">
-			<PlayButton hits={track.notes} label="Target Track" />
-			<PlayButton hits={recordingHits} label="My Recording" />
-		</div>
-	</div>
+<PageHeader
+	title={track.name}
+	subtitle="Played {new Date(session.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {session.hit_count} hits recorded"
+	back={{ href: '/history', label: 'Progress' }}
+>
+	{#snippet actions()}
+		<Button href="/session/{session.track_id}" variant="primary">
+			<RotateCcw size={16} aria-hidden="true" /> Practice again
+		</Button>
+	{/snippet}
+</PageHeader>
 
-	<!-- Summary cards -->
-	<ScoreSummary {score} />
+<ScoreSummary {score} />
 
-	<!-- Per-instrument table -->
-	<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-		<h2 class="text-sm font-semibold text-zinc-300 mb-4">Per-Instrument Breakdown</h2>
-		<InstrumentTable breakdown={score.by_instrument} />
-	</div>
-
-	<!-- Timing histogram -->
-	<TimingHistogram hits={score.matched_hits} />
-
-	<!-- Timeline -->
-	<TimelineView
-		targetNotes={track.notes}
-		matchedHits={score.matched_hits}
-		ghostHits={score.ghost_hits}
-		breakdown={score.by_instrument}
-		durationMs={track.duration_ms}
-		bpm={track.bpm}
-		timeSigNumerator={track.time_sig_numerator}
-	/>
+<div class="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+	<span>Compare by ear:</span>
+	<PlayButton hits={track.notes} label="The track" />
+	<PlayButton hits={recordingHits} label="Your take" />
 </div>
+
+<Card title="By instrument">
+	<InstrumentTable breakdown={score.by_instrument} />
+</Card>
+
+<TimingHistogram hits={score.matched_hits} />
+
+<TimelineView
+	targetNotes={track.notes}
+	matchedHits={score.matched_hits}
+	ghostHits={score.ghost_hits}
+	breakdown={score.by_instrument}
+	durationMs={track.duration_ms}
+	bpm={track.bpm}
+	timeSigNumerator={track.time_sig_numerator}
+/>
