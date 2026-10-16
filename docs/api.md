@@ -125,7 +125,7 @@ Submit a completed recording session. The backend:
 | `started_at` | string (ISO 8601) | UTC timestamp when recording started |
 | `ended_at` | string (ISO 8601) | UTC timestamp when recording stopped |
 | `hits[].note_number` | integer | MIDI note number (GM drum map) |
-| `hits[].time_ms` | float | Milliseconds from session start (`event.timeStamp - sessionStartTime`) |
+| `hits[].time_ms` | float | Milliseconds from the start of the track, in the track's original tempo. May be slightly negative (down to −1000) for a note played just before the first beat after a count-in. |
 | `hits[].velocity` | integer | MIDI velocity 0–127 |
 
 **Response `201 Created`:**

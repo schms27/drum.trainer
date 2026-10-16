@@ -30,3 +30,21 @@ export const LANES = INSTRUMENTS.filter((i) => i !== 'Other');
 export function drumGroup(note: number): string {
 	return GM_GROUP[note] ?? 'Other';
 }
+
+/** Note-level names, more specific than the instrument groups (e.g. rim vs. snare). */
+const NOTE_NAMES: Readonly<Record<number, string>> = {
+	35: 'Bass Drum', 36: 'Bass Drum',
+	37: 'Side Stick', 38: 'Snare', 40: 'Snare (rim)',
+	42: 'Hi-Hat (closed)', 44: 'Hi-Hat (pedal)', 46: 'Hi-Hat (open)',
+	49: 'Crash 1', 57: 'Crash 2',
+	51: 'Ride', 53: 'Ride Bell', 59: 'Ride 2',
+	50: 'Tom (high)',
+	47: 'Tom (mid)', 48: 'Tom (mid)',
+	43: 'Tom (low)', 45: 'Tom (low)',
+	41: 'Tom (floor)'
+};
+
+/** Human-readable name for a MIDI note from a drum kit. */
+export function noteLabel(note: number): string {
+	return NOTE_NAMES[note] ?? `Note ${note}`;
+}

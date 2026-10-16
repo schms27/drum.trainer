@@ -14,6 +14,9 @@ import (
 	"github.com/simu/drum-trainer/backend/scoring"
 )
 
+// minHitTimeMs is the earliest accepted hit time relative to the start of the track.
+const minHitTimeMs = -1000.0
+
 type sessionsHandler struct {
 	db      *dbpkg.DB
 	maxHits int
@@ -43,8 +46,10 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "hit velocity out of range (1–127)")
 			return
 		}
-		if h.TimeMs < 0 {
-			writeError(w, http.StatusBadRequest, "hit time_ms must be non-negative")
+		// Slightly negative times are valid: with a count-in, time zero is the
+		// first beat and a first note played early lands just before it.
+		if h.TimeMs < minHitTimeMs {
+			writeError(w, http.StatusBadRequest, "hit time_ms must be at least -1000")
 			return
 		}
 	}

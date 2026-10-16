@@ -55,7 +55,7 @@
 		{#if !ready}
 			Loading audio…
 		{:else if !player}
-			Starts together with your first note. You can mute tracks while recording.
+			Starts together with the track. You can mute tracks while recording.
 		{:else}
 			Playing along with your recording.
 		{/if}

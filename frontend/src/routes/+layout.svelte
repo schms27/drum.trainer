@@ -5,6 +5,7 @@
 	import { navigating } from '$app/state';
 	import type { LayoutData } from './$types';
 	import '$lib/theme.svelte';
+	import { focusMode } from '$lib/focus.svelte';
 
 	const appVersion = import.meta.env.VITE_APP_VERSION ?? 'dev';
 
@@ -19,11 +20,14 @@
 	{/if}
 
 	<div class="min-h-screen bg-canvas text-fg flex flex-col">
-		<Header user={data.user} />
+		<!-- Focus mode (during a take) hides the page chrome. -->
+		{#if !focusMode.active}<Header user={data.user} />{/if}
 		<main class="max-w-5xl w-full mx-auto px-4 py-8 flex-1 flex flex-col gap-8">
 			{@render children()}
 		</main>
-		<footer class="text-center text-fg-subtle text-xs py-4">Drum Trainer · version {appVersion}</footer>
+		{#if !focusMode.active}
+			<footer class="text-center text-fg-subtle text-xs py-4">Drum Trainer · version {appVersion}</footer>
+		{/if}
 	</div>
 {:else}
 	{@render children()}

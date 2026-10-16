@@ -2,6 +2,16 @@ export interface MetronomeOptions {
 	beatsPerBar?: number;
 	/** Called just before each click sounds. beatIndex is 0-based within the bar. */
 	onBeat?: (beatIndex: number, accent: boolean) => void;
+	/**
+	 * Use an existing AudioContext instead of creating one. The context is then
+	 * owned by the caller and is not closed by stop(). Lets a recording share
+	 * one clock between the count-in, the click and backing tracks.
+	 */
+	context?: AudioContext;
+	/** AudioContext time of the first click (default: just after start()). */
+	startTime?: number;
+	/** Stop automatically after this many clicks (e.g. one bar of count-in). */
+	maxBeats?: number;
 }
 
 export interface Metronome {
@@ -16,8 +26,23 @@ export interface Metronome {
 	getNextBeat1DelayMs(): number | null;
 }
 
+/** Schedule a single click sound at the given AudioContext time. */
+export function playClick(ctx: AudioContext, time: number, accent: boolean): void {
+	const osc = ctx.createOscillator();
+	const env = ctx.createGain();
+	osc.type = 'triangle';
+	osc.frequency.value = accent ? 1200 : 900;
+	env.gain.setValueAtTime(accent ? 0.6 : 0.35, time);
+	env.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+	osc.connect(env);
+	env.connect(ctx.destination);
+	osc.start(time);
+	osc.stop(time + 0.045);
+}
+
 export function createMetronome(initialBpm: number, options?: MetronomeOptions): Metronome {
 	const beatsPerBar = options?.beatsPerBar ?? 4;
+	const ownsContext = !options?.context;
 
 	let ctx: AudioContext | null = null;
 	let bpm = initialBpm;
@@ -33,17 +58,7 @@ export function createMetronome(initialBpm: number, options?: MetronomeOptions):
 
 	function scheduleClick(time: number, accent: boolean): void {
 		if (!ctx) return;
-
-		const osc = ctx.createOscillator();
-		const env = ctx.createGain();
-		osc.type = 'triangle';
-		osc.frequency.value = accent ? 1200 : 900;
-		env.gain.setValueAtTime(accent ? 0.6 : 0.35, time);
-		env.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-		osc.connect(env);
-		env.connect(ctx.destination);
-		osc.start(time);
-		osc.stop(time + 0.045);
+		playClick(ctx, time, accent);
 
 		if (options?.onBeat) {
 			const delayMs = Math.max(0, (time - ctx.currentTime) * 1000);
@@ -52,9 +67,22 @@ export function createMetronome(initialBpm: number, options?: MetronomeOptions):
 		}
 	}
 
+	function stop(): void {
+		if (timerId) {
+			clearTimeout(timerId);
+			timerId = null;
+		}
+		if (ownsContext) ctx?.close();
+		ctx = null;
+	}
+
 	function runScheduler(): void {
 		if (!ctx) return;
 		while (nextBeatTime < ctx.currentTime + SCHEDULE_AHEAD_S) {
+			if (options?.maxBeats !== undefined && beatIndex >= options.maxBeats) {
+				stop();
+				return;
+			}
 			const accent = beatIndex % beatsPerBar === 0;
 			scheduleClick(nextBeatTime, accent);
 			nextBeatTime += 60 / bpm;
@@ -69,19 +97,12 @@ export function createMetronome(initialBpm: number, options?: MetronomeOptions):
 		},
 		start() {
 			if (ctx) return;
-			ctx = new AudioContext();
+			ctx = options?.context ?? new AudioContext();
 			beatIndex = 0;
-			nextBeatTime = ctx.currentTime + 0.05;
+			nextBeatTime = options?.startTime ?? ctx.currentTime + 0.05;
 			runScheduler();
 		},
-		stop() {
-			if (timerId) {
-				clearTimeout(timerId);
-				timerId = null;
-			}
-			ctx?.close();
-			ctx = null;
-		},
+		stop,
 		setBpm(newBpm: number) {
 			bpm = newBpm;
 		},
@@ -90,7 +111,7 @@ export function createMetronome(initialBpm: number, options?: MetronomeOptions):
 			// How many beats until the next bar-1 accent?
 			const phase = beatIndex % beatsPerBar;
 			const beatsUntilBeat1 = (beatsPerBar - phase) % beatsPerBar;
-			const secs = (nextBeatTime - ctx.currentTime) + beatsUntilBeat1 * (60 / bpm);
+			const secs = nextBeatTime - ctx.currentTime + beatsUntilBeat1 * (60 / bpm);
 			return secs * 1000;
 		}
 	};
