@@ -254,6 +254,45 @@ Retrieve the full result for a completed session. Used by the results page.
 
 ---
 
+## Kit profiles
+
+A kit profile maps the MIDI notes sent by the user's e-drum kit to instrument groups. The **active** profile is applied to recorded hits when a take is scored; a track's own note mapping (`/tracks/:id/mapping`) applies to the notes in the MIDI file. Without an active profile, hits use the track's mapping, as before kit profiles existed. Notes a profile doesn't list fall back to the General MIDI defaults.
+
+### GET /api/v1/kits
+
+**Response `200 OK`:**
+```json
+{
+  "kits": [
+    {
+      "id": 1,
+      "name": "Roland TD-17",
+      "mappings": [{ "note_number": 26, "instrument": "Hi-Hat" }],
+      "active": true,
+      "created_at": "2026-10-17T08:00:00Z"
+    }
+  ]
+}
+```
+
+### POST /api/v1/kits · PUT /api/v1/kits/:id
+
+**Request body:** `{ "name": "Roland TD-17", "mappings": [{ "note_number": 26, "instrument": "Hi-Hat" }] }`
+
+`name` is 1–60 characters; each `note_number` (0–127) may appear once; `instrument` is one of the instrument groups. Returns the saved kit (`201 Created` / `200 OK`). The user's first kit becomes active automatically.
+
+### DELETE /api/v1/kits/:id
+
+**Response `204 No Content`.** Deleting the active kit leaves no kit active.
+
+### PUT /api/v1/kits/active
+
+**Request body:** `{ "id": 1 }`, or `{ "id": null }` for standard General MIDI numbering. **Response `204 No Content`.**
+
+**Error responses (all kit endpoints):** `400` for invalid input, `404` if the kit doesn't belong to the user.
+
+---
+
 ## Stats
 
 ### GET /api/v1/stats

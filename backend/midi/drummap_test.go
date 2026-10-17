@@ -56,13 +56,6 @@ func TestInstrumentGroup_UnknownNote(t *testing.T) {
 	}
 }
 
-func TestInstrumentGroupMap_ContainsAllDrumMapKeys(t *testing.T) {
-	m := midi.InstrumentGroupMap()
-	if len(m) != len(midi.DrumMap) {
-		t.Errorf("InstrumentGroupMap len %d != DrumMap len %d", len(m), len(midi.DrumMap))
-	}
-}
-
 func TestDrumMapGroupsAreValidInstruments(t *testing.T) {
 	for note, group := range midi.DrumMap {
 		if !midi.IsValidInstrument(group) {

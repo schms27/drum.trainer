@@ -416,3 +416,31 @@ func TestScore_SimultaneousNotesKeepFullWindow(t *testing.T) {
 		t.Fatalf("expected 1 match within the full 200ms window, got %d", len(r.MatchedHits))
 	}
 }
+
+func TestScoreWithGroups_SeparateTargetAndHitMappings(t *testing.T) {
+	// The file uses note 38 for the snare, the kit sends 40 for its snare pad.
+	// With separate mappings both land in "Snare" and match.
+	fileGroup := func(n int) string {
+		if n == 38 {
+			return "Snare"
+		}
+		return "Other"
+	}
+	kitGroup := func(n int) string {
+		if n == 40 {
+			return "Snare"
+		}
+		return "Other"
+	}
+	r := scoring.ScoreWithGroups(
+		[]models.NoteEvent{note(38, 1000)},
+		[]models.RecordedHit{hit(40, 1005)},
+		fileGroup, kitGroup,
+	)
+	if r.HitRate != 1 || len(r.GhostHits) != 0 {
+		t.Fatalf("expected a match across mappings, got hit rate %.2f, %d extra hits", r.HitRate, len(r.GhostHits))
+	}
+	if r.MatchedHits[0].Instrument != "Snare" {
+		t.Errorf("instrument = %q, want Snare", r.MatchedHits[0].Instrument)
+	}
+}

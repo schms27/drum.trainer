@@ -26,7 +26,8 @@
 		practiceBpm = 120,
 		timeSigNumerator = 4,
 		durationMs = 0,
-		firstHitTimeMs = 0
+		firstHitTimeMs = 0,
+		hitGroup
 	}: {
 		deviceId: string;
 		onFinished: (hits: RecordedHit[], startedAt: string, endedAt: string) => void;
@@ -49,6 +50,8 @@
 		durationMs?: number;
 		/** Time (ms, practice tempo) the first hit is stamped with in first-note mode. */
 		firstHitTimeMs?: number;
+		/** Instrument for a note from the kit (the active kit profile, or General MIDI). */
+		hitGroup?: (note: number) => string;
 	} = $props();
 
 	/** Extra time after the last note before stopping automatically. */
@@ -370,7 +373,7 @@
 		</div>
 	{/if}
 
-	<HitTimeline {expectedHits} actualHits={liveHits} {currentTimeMs} {timeScale} {bpm} {timeSigNumerator} />
+	<HitTimeline {expectedHits} actualHits={liveHits} {currentTimeMs} {timeScale} {bpm} {timeSigNumerator} {hitGroup} />
 
 	<LiveEventFeed hits={liveHits} />
 </div>

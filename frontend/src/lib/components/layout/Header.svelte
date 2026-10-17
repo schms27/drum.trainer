@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Drum, Library, ChartLine, LogOut, Menu, X } from '@lucide/svelte';
+	import { Drum, Library, ChartLine, LogOut, Menu, X, SlidersHorizontal } from '@lucide/svelte';
 	import { logout, type AuthUser } from '$lib/api/auth';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 
@@ -126,6 +126,16 @@
 							</a>
 						{/each}
 					</nav>
+
+					<a
+						href="/kit"
+						aria-current={path.startsWith('/kit') ? 'page' : undefined}
+						class="flex items-center gap-3 px-2 h-10 rounded-lg text-sm border-t border-line
+							{path.startsWith('/kit') ? 'bg-accent-soft text-accent-text font-medium' : 'text-fg hover:bg-control'}"
+					>
+						<SlidersHorizontal size={16} aria-hidden="true" />
+						My kit
+					</a>
 
 					<div class="flex items-center justify-between px-2 h-10 border-t border-line">
 						<span class="text-sm text-fg-muted">Theme</span>

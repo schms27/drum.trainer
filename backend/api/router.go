@@ -44,6 +44,7 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 	sh := &sessionsHandler{db: db, maxHits: cfg.MaxSessionHits}
 	sth := &statsHandler{db: db}
 	ph := &pilotsHandler{db: db, store: store, maxBytes: maxPilotBytes}
+	kh := &kitsHandler{db: db}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
@@ -80,6 +81,13 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 			r.Get("/tracks/{id}/pilots", ph.list)
 			r.Delete("/tracks/{id}/pilots/{pilotId}", ph.delete)
 			r.Get("/tracks/{id}/pilots/{pilotId}/audio", ph.audio)
+
+			// Kit profiles (how the user's pads map to instruments).
+			r.Get("/kits", kh.list)
+			r.Post("/kits", kh.create)
+			r.Put("/kits/active", kh.setActive)
+			r.Put("/kits/{id}", kh.update)
+			r.Delete("/kits/{id}", kh.delete)
 		})
 	})
 

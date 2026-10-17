@@ -88,17 +88,29 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load per-track mapping overrides (ignore error; fall back to defaults).
+	// The track's mapping applies to the MIDI file's notes. The user's active
+	// kit profile, if any, applies to the recorded hits; without one, hits use
+	// the track's mapping as well (the behaviour before kit profiles existed).
+	// Errors fall back to the General MIDI defaults.
 	trackMap, _ := dbpkg.GetTrackMapping(h.db, req.TrackID)
-	instrFunc := func(n int) string {
+	targetGroup := func(n int) string {
 		if g, ok := trackMap[n]; ok {
 			return g
 		}
 		return midipkg.InstrumentGroup(n)
 	}
+	hitGroup := targetGroup
+	if kitMap, ok, err := dbpkg.ActiveKitMapping(h.db, user.ID); err == nil && ok {
+		hitGroup = func(n int) string {
+			if g, ok := kitMap[n]; ok {
+				return g
+			}
+			return midipkg.InstrumentGroup(n)
+		}
+	}
 
 	// Run the scoring algorithm.
-	score := scoring.Score(targetNotes, req.Hits, instrFunc)
+	score := scoring.ScoreWithGroups(targetNotes, req.Hits, targetGroup, hitGroup)
 
 	session := &models.Session{
 		TrackID:    req.TrackID,
@@ -108,10 +120,10 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		HitCount:   len(req.Hits),
 	}
 
-	// Build instrument group map for raw hit annotation, merging custom overrides.
-	instrMap := midipkg.InstrumentGroupMap()
-	for note, group := range trackMap {
-		instrMap[strconv.Itoa(note)] = group
+	// Instrument of each recorded note number, for annotating the raw hits.
+	instrMap := make(map[string]string)
+	for _, hit := range req.Hits {
+		instrMap[strconv.Itoa(hit.NoteNumber)] = hitGroup(hit.NoteNumber)
 	}
 
 	sessionID, err := dbpkg.InsertSession(h.db, session, req.Hits, score, instrMap, user.ID)

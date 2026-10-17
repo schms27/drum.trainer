@@ -86,9 +86,10 @@
 />
 
 <Notice>
-	Every MIDI note in this track belongs to an instrument. Hits are only compared with notes of the same
+	Every MIDI note in this file belongs to an instrument. Your hits are only compared with notes of the same
 	instrument, so a bass drum hit never counts for the snare. The defaults follow the General MIDI standard —
-	change them only if this file (or your kit) uses different note numbers.
+	change them only if this file uses different note numbers. To map the pads of your kit instead, use
+	<a href="/kit" class="text-accent-text hover:underline">My kit</a>.
 </Notice>
 
 <div class="bg-card border border-line rounded-xl overflow-hidden">

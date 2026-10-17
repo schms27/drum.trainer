@@ -3,7 +3,7 @@
 Branch: `ui-overhaul`. Goal: make the app self-explanatory and easier to use.
 Decisions below were settled on 2026-10-16.
 
-**Status:** phases 1–3 implemented; phase 4 not started.
+**Status:** phases 1–4 implemented.
 
 ## Problems found (review of every page, desktop + phone)
 
@@ -65,6 +65,6 @@ Decisions below were settled on 2026-10-16.
 - Results: one-sentence summary, change versus last attempt and best, "Try again" / "Try slower" actions, metric explanations.
 - Progress page merging History and Stats: accuracy trend per track, practice time and streak, session list with track filter.
 
-### Phase 4 — Kit profiles and onboarding
+### Phase 4 — Kit profiles and onboarding ✅
 - Kit profiles with learn mode; per-track overrides; scoring changes as described above.
 - First-run onboarding: requirements (Chrome/Edge, USB kit, HTTPS) and the three-step flow.
