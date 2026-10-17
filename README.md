@@ -10,8 +10,8 @@
 
 <p align="center">
   <a href="https://github.com/schms27/drum.trainer/actions/workflows/docker.yml?query=branch%3Amain"><img src="https://github.com/schms27/drum.trainer/actions/workflows/docker.yml/badge.svg?branch=main" alt="Build status on main"></a>
-  <a href="https://github.com/schms27/drum.trainer/releases/latest"><img src="https://img.shields.io/github/v/release/schms27/drum.trainer?sort=semver&label=release" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/schms27/drum.trainer" alt="MIT license"></a>
+  <a href="https://github.com/schms27/drum.trainer/releases/latest"><img src="https://badgen.net/github/release/schms27/drum.trainer" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
 <p align="center">
