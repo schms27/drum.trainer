@@ -24,7 +24,8 @@
 		currentTimeMs = 0,
 		timeScale = 1,
 		bpm = 120,
-		timeSigNumerator = 4
+		timeSigNumerator = 4,
+		hitGroup = (note: number) => GM_GROUP[note] ?? ''
 	}: {
 		expectedHits: NoteEvent[];
 		actualHits: RecordedHit[];
@@ -32,6 +33,8 @@
 		timeScale?: number;
 		bpm?: number;
 		timeSigNumerator?: number;
+		/** Instrument for a note from the kit (the active kit profile, or General MIDI). */
+		hitGroup?: (note: number) => string;
 	} = $props();
 
 	// Only show lanes the track uses, plus any instrument the drummer actually
@@ -40,7 +43,7 @@
 		LANES.filter(
 			(lane) =>
 				expectedHits.some((h) => h.instrument === lane) ||
-				actualHits.some((h) => GM_GROUP[h.note_number] === lane)
+				actualHits.some((h) => hitGroup(h.note_number) === lane)
 		)
 	);
 	const svgH = $derived(MARGIN_TOP + lanes.length * ROW_H + MARGIN_BOTTOM);
@@ -121,7 +124,7 @@
 	// matching it against the nearest expected hit of the same instrument.
 	const coloredActuals = $derived(
 		actualHits.flatMap((hit) => {
-			const group = GM_GROUP[hit.note_number] ?? '';
+			const group = hitGroup(hit.note_number);
 			const li = laneIndex(group);
 			if (li < 0) return [];
 

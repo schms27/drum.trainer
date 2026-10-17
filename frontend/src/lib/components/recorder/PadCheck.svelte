@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { CircleCheck } from '@lucide/svelte';
 	import { listenToInput, type NoteOn } from '$lib/midi/input';
-	import { drumGroup, noteLabel } from '$lib/drums';
+	import { noteLabel } from '$lib/drums';
+	import { kitInstrument, type KitProfile } from '$lib/api/kits';
 
-	let { deviceId }: { deviceId: string } = $props();
+	let { deviceId, kit = null }: { deviceId: string; kit?: KitProfile | null } = $props();
 
 	let last = $state<NoteOn | null>(null);
 	let count = $state(0);
@@ -45,11 +46,15 @@
 	aria-live="polite"
 >
 	{#if last}
+		{@const instrument = kitInstrument(kit, last.note)}
 		<CircleCheck size={18} class="text-good shrink-0" aria-hidden="true" />
 		<div class="min-w-0">
 			<p class="text-fg">
-				<span class="font-medium">{noteLabel(last.note)}</span>
-				{#if drumGroup(last.note) === 'Other'}<span class="text-fg-subtle"> (not a standard drum note — see Pad mapping)</span>{/if}
+				<span class="font-medium">{instrument === 'Other' ? noteLabel(last.note) : instrument}</span>
+				{#if instrument === 'Other'}
+					<span class="text-fg-subtle"> — not mapped to an instrument.</span>
+					<a href="/kit" class="text-accent-text hover:underline">Set up your kit</a>
+				{/if}
 			</p>
 			<p class="text-xs text-fg-subtle">Note {last.note} · velocity {last.velocity} · {count} {count === 1 ? 'hit' : 'hits'} so far</p>
 		</div>

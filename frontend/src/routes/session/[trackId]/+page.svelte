@@ -20,12 +20,16 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { INSTRUMENTS } from '$lib/drums';
 	import { practiceSettings } from '$lib/practice-settings.svelte';
+	import { kitInstrument } from '$lib/api/kits';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 	// svelte-ignore state_referenced_locally
-	const { track, pilots } = data;
+	const { track, pilots, activeKit } = data;
+	// Recorded notes are mapped through the active kit profile (or General MIDI),
+	// matching how the backend scores the take.
+	const hitGroup = (note: number) => kitInstrument(activeKit, note);
 
 	// ── Backing tracks ("pilots" in the API) ────────────────────────────────
 	let pilotPlayer = $state<PilotPlayer | null>(null);
@@ -186,7 +190,11 @@
 			<div class="flex flex-col gap-3">
 				<MidiDeviceSelector bind:selectedId={selectedDeviceId} />
 				{#if selectedDeviceId}
-					<PadCheck deviceId={selectedDeviceId} />
+					<PadCheck deviceId={selectedDeviceId} kit={activeKit} />
+					<p class="text-sm text-fg-muted">
+						Pads: <span class="text-fg">{activeKit ? activeKit.name : 'standard General MIDI'}</span> ·
+						<a href="/kit" class="text-accent-text hover:underline">{activeKit ? 'change' : 'set up my kit'}</a>
+					</p>
 					<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
 						<span class="text-fg-muted">
 							Timing correction:
@@ -248,6 +256,7 @@
 			timeSigNumerator={track.time_sig_numerator}
 			durationMs={track.duration_ms}
 			firstHitTimeMs={firstTargetMs * (track.bpm / currentBpm)}
+			{hitGroup}
 		/>
 	{/if}
 </section>
