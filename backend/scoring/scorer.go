@@ -30,16 +30,23 @@ const (
 //   - Unmatched target notes → misses.
 //   - Unmatched recorded hits → ghost notes.
 func Score(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, instrumentGroup func(int) string) *models.ScoreResult {
+	return ScoreWithGroups(targetNotes, recordedHits, instrumentGroup, instrumentGroup)
+}
+
+// ScoreWithGroups is Score with separate note→instrument mappings for the
+// target notes (from the MIDI file) and the recorded hits (from the kit),
+// since a file and a kit may number the same drum differently.
+func ScoreWithGroups(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, targetGroup, hitGroup func(int) string) *models.ScoreResult {
 	// Group targets by instrument.
 	targetsByGroup := make(map[string][]models.NoteEvent)
 	for _, n := range targetNotes {
-		g := instrumentGroup(n.NoteNumber)
+		g := targetGroup(n.NoteNumber)
 		targetsByGroup[g] = append(targetsByGroup[g], n)
 	}
 	// Group recorded hits by instrument.
 	hitsByGroup := make(map[string][]models.RecordedHit)
 	for _, h := range recordedHits {
-		g := instrumentGroup(h.NoteNumber)
+		g := hitGroup(h.NoteNumber)
 		hitsByGroup[g] = append(hitsByGroup[g], h)
 	}
 

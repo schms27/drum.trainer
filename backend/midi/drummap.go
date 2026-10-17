@@ -1,9 +1,6 @@
 package midi
 
-import (
-	"fmt"
-	"slices"
-)
+import "slices"
 
 // DrumMap maps GM channel-10 note numbers to instrument group names.
 // Groups are intentionally broad so the scorer can match across
@@ -60,14 +57,4 @@ func InstrumentGroup(noteNumber int) string {
 		return name
 	}
 	return "Other"
-}
-
-// InstrumentGroupMap returns a map of note number string keys → group names,
-// useful for quick lookups when inserting session hits.
-func InstrumentGroupMap() map[string]string {
-	m := make(map[string]string, len(DrumMap))
-	for note, group := range DrumMap {
-		m[fmt.Sprintf("%d", note)] = group
-	}
-	return m
 }
