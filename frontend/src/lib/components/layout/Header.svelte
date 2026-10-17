@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Drum, Library, ChartLine, LogOut, Menu, X, SlidersHorizontal } from '@lucide/svelte';
+	import { Library, ChartLine, LogOut, Menu, X, SlidersHorizontal } from '@lucide/svelte';
 	import { logout, type AuthUser } from '$lib/api/auth';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 
@@ -64,8 +64,8 @@
 <header class="bg-panel border-b border-line sticky top-0 z-40">
 	<div class="max-w-5xl mx-auto px-4 h-14 flex items-center gap-6">
 		<a href="/" class="flex items-center gap-2 font-bold text-lg text-fg hover:text-accent-text transition-colors">
-			<Drum size={22} aria-hidden="true" />
-			Drum Trainer
+			<img src="/logo.svg" alt="" width="32" height="32" class="w-8 h-8" />
+			<span class="font-brand text-[1.2rem] tracking-tight">Drum Trainer</span>
 		</a>
 
 		<!-- Desktop navigation -->

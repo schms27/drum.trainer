@@ -27,7 +27,7 @@
 	{/if}
 	<div class="flex flex-wrap items-start justify-between gap-4">
 		<div class="min-w-0">
-			<h1 class="text-2xl font-bold text-fg break-words">{title}</h1>
+			<h1 class="font-brand text-[1.65rem] leading-tight font-bold text-fg tracking-tight break-words">{title}</h1>
 			{#if subtitle}<p class="text-sm text-fg-muted mt-1">{subtitle}</p>{/if}
 		</div>
 		{#if actions}<div class="flex flex-wrap items-center gap-2">{@render actions()}</div>{/if}

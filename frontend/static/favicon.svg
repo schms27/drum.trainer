@@ -1,18 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Background pill -->
-  <rect width="32" height="32" rx="7" fill="#18181b"/>
-
-  <!-- Drum body: side walls -->
-  <line x1="7" y1="13" x2="7" y2="21" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
-  <line x1="25" y1="13" x2="25" y2="21" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
-
-  <!-- Drum bottom rim -->
-  <ellipse cx="16" cy="21" rx="9" ry="3" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.8"/>
-
-  <!-- Drum top rim (hit surface) -->
-  <ellipse cx="16" cy="13" rx="9" ry="3" fill="#27272a" stroke="#f59e0b" stroke-width="1.8"/>
-
-  <!-- Drumsticks -->
-  <line x1="11" y1="4"  x2="15" y2="12" stroke="#e4e4e7" stroke-width="1.6" stroke-linecap="round"/>
-  <line x1="21" y1="4"  x2="17" y2="12" stroke="#e4e4e7" stroke-width="1.6" stroke-linecap="round"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="256" height="256" viewBox="0 0 256 256">
+  <title>Drum Trainer</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <path d="M72 16 L184 16 C214.928 16 240 41.072 240 72 L240 184 C240 214.928 214.928 240 184 240 L72 240 C41.072 240 16 214.928 16 184 L16 72 C16 41.072 41.072 16 72 16 Z" fill="#3a3a42"/>
+    <path d="M158.23 57.42 C138.11 91.07 123.72 99.2 110.98 121.27 L70.94 190.62 C67.29 197.292 69.635 205.658 76.221 209.462 C82.806 213.266 91.224 211.116 95.18 204.62 L135.22 135.27 C147.96 113.2 147.81 96.67 166.89 62.42 Z" fill="#e2ad80"/>
+    <path d="M174.06 40 C176.761 41.469 178.106 44.866 177.578 48.886 C177.05 52.906 174.731 56.921 171.514 59.387 C168.297 61.853 164.682 62.386 162.06 60.78 C159.359 59.311 158.014 55.914 158.542 51.894 C159.07 47.874 161.389 43.859 164.606 41.393 C167.823 38.927 171.438 38.394 174.06 40 Z" fill="#e2ad80"/>
+    <path d="M89.11 62.42 C108.19 96.67 108.04 113.2 120.78 135.27 L160.82 204.62 C164.776 211.116 173.194 213.266 179.779 209.462 C186.365 205.658 188.71 197.292 185.06 190.62 L145.02 121.27 C132.28 99.2 117.89 91.07 97.77 57.42 Z" fill="#f3cda5"/>
+    <path d="M81.94 40 C84.562 38.394 88.177 38.927 91.394 41.393 C94.611 43.859 96.93 47.874 97.458 51.894 C97.986 55.914 96.641 59.311 93.94 60.78 C91.318 62.386 87.703 61.853 84.486 59.387 C81.269 56.921 78.95 52.906 78.422 48.886 C77.894 44.866 79.239 41.469 81.94 40 Z" fill="#f3cda5"/>
+  </g>
 </svg>
