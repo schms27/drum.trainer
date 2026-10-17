@@ -1,5 +1,11 @@
 @import 'tailwindcss';
 
+/* Brand typeface for the wordmark and page titles (bundled via @fontsource,
+   imported in +layout.svelte; no requests to third-party font servers). */
+@theme {
+	--font-brand: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+}
+
 /*
  * Semantic design tokens.
  *

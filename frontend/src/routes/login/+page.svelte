@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { loginUrl } from '$lib/api/auth';
-	import { Drum } from '@lucide/svelte';
 	import '$lib/theme.svelte';
 
 	const errorMessages: Record<string, string> = {
@@ -22,8 +21,8 @@
 <div class="min-h-screen bg-canvas flex items-center justify-center px-4">
 	<div class="w-full max-w-sm">
 		<div class="text-center mb-8">
-			<Drum size={48} class="mx-auto text-accent-text" aria-hidden="true" />
-			<h1 class="text-2xl font-bold text-fg mt-4">Drum Trainer</h1>
+			<img src="/logo.svg" alt="" width="88" height="88" class="w-22 h-22 mx-auto" />
+			<h1 class="font-brand text-3xl font-bold text-fg mt-4 tracking-tight">Drum Trainer</h1>
 			<p class="text-fg-muted text-sm mt-2">Practise along with MIDI drum tracks on your e-drum kit and see how accurately you play.</p>
 		</div>
 

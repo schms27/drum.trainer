@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import '@fontsource/outfit/700.css';
 	import type { Snippet } from 'svelte';
 	import Header from '$lib/components/layout/Header.svelte';
 	import { navigating } from '$app/state';
