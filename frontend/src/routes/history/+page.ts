@@ -1,8 +1,7 @@
-import { listSessions } from '$lib/api/sessions';
-import { listTracks } from '$lib/api/tracks';
+import { redirect } from '@sveltejs/kit';
+import type { PageLoad } from './$types';
 
-export const load = async () => {
-	const [page, tracks] = await Promise.all([listSessions(), listTracks()]);
-	const trackNames = new Map(tracks.map((t) => [t.id, t.name]));
-	return { sessions: page.sessions, hasMore: page.hasMore, trackNames };
+// History and Stats were merged into /progress.
+export const load: PageLoad = () => {
+	redirect(308, '/progress');
 };

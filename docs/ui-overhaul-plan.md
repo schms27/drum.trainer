@@ -3,7 +3,7 @@
 Branch: `ui-overhaul`. Goal: make the app self-explanatory and easier to use.
 Decisions below were settled on 2026-10-16.
 
-**Status:** phases 1 and 2 implemented; phases 3–4 not started.
+**Status:** phases 1–3 implemented; phase 4 not started.
 
 ## Problems found (review of every page, desktop + phone)
 
@@ -59,7 +59,7 @@ Decisions below were settled on 2026-10-16.
 - Count-in (default) and first-hit start (setting); latency calibration.
 - Large status banner, automatic stop at track end, focus mode.
 
-### Phase 3 — Progress and track pages (needs API work)
+### Phase 3 — Progress and track pages (needs API work) ✅
 - Track list/detail API with best score, session count, last practiced, hit-rate trend.
 - Dedicated track page; simplified library cards with automatic drum channel detection (channel picker under "Advanced").
 - Results: one-sentence summary, change versus last attempt and best, "Try again" / "Try slower" actions, metric explanations.

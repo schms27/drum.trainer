@@ -45,12 +45,22 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Read optional channel parameter (1–16, display-numbered). Default to 10 (GM drums).
-	drumChannel := uint8(9) // 0-indexed
-	if ch := r.FormValue("channel"); ch != "" {
+	// Optional channel parameter: 1–16 (display-numbered), or "auto" to detect
+	// the drum part. Defaults to 10 (GM drums).
+	drumChannel := midipkg.GMDrumChannel // 0-indexed
+	switch ch := r.FormValue("channel"); ch {
+	case "":
+	case "auto":
+		detected, err := midipkg.DetectDrumChannel(data)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		drumChannel = detected
+	default:
 		n, err := strconv.Atoi(ch)
 		if err != nil || n < 1 || n > 16 {
-			writeError(w, http.StatusBadRequest, "channel must be between 1 and 16")
+			writeError(w, http.StatusBadRequest, "channel must be between 1 and 16, or auto")
 			return
 		}
 		drumChannel = uint8(n - 1)
@@ -84,15 +94,14 @@ func (h *tracksHandler) create(w http.ResponseWriter, r *http.Request) {
 		TimeSigNumerator: parsed.TimeSigNumerator,
 	}
 
-	trackID, err := dbpkg.InsertTrack(h.db, track, parsed.Notes, user.ID)
-	if err != nil {
+	if err := dbpkg.InsertTrack(h.db, track, parsed.Notes, user.ID); err != nil {
 		// Best-effort cleanup.
 		h.store.Delete(storedName)
 		writeError(w, http.StatusInternalServerError, "failed to save track")
 		return
 	}
 
-	track.ID = trackID
+	track.Stats = dbpkg.EmptyTrackStats()
 	writeJSON(w, http.StatusCreated, models.TrackWithNotes{
 		Track: *track,
 		Notes: parsed.Notes,
@@ -109,6 +118,14 @@ func (h *tracksHandler) list(w http.ResponseWriter, r *http.Request) {
 	}
 	if tracks == nil {
 		tracks = []models.Track{}
+	}
+	stats, err := dbpkg.ListTrackStats(h.db, user.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load practice stats")
+		return
+	}
+	for i := range tracks {
+		tracks[i].Stats = statsOrEmpty(stats, tracks[i].ID)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"tracks": tracks})
 }
@@ -137,6 +154,13 @@ func (h *tracksHandler) get(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to fetch notes")
 		return
 	}
+
+	stats, err := dbpkg.ListTrackStats(h.db, user.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load practice stats")
+		return
+	}
+	track.Stats = statsOrEmpty(stats, id)
 
 	writeJSON(w, http.StatusOK, models.TrackWithNotes{Track: *track, Notes: notes})
 }
@@ -302,6 +326,14 @@ func buildMappings(db *dbpkg.DB, trackID int64) ([]models.NoteMapping, error) {
 		mappings = append(mappings, models.NoteMapping{NoteNumber: note, Instrument: instr})
 	}
 	return mappings, nil
+}
+
+// statsOrEmpty returns the track's stats, or empty stats if it has no takes.
+func statsOrEmpty(stats map[int64]*models.TrackStats, trackID int64) *models.TrackStats {
+	if st, ok := stats[trackID]; ok {
+		return st
+	}
+	return dbpkg.EmptyTrackStats()
 }
 
 func parseID(s string) (int64, error) {

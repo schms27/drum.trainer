@@ -7,18 +7,19 @@ import (
 	"github.com/simu/drum-trainer/backend/models"
 )
 
-// InsertPilotTrack persists a new pilot track row and returns its assigned ID.
-func InsertPilotTrack(db *DB, pilot *models.PilotTrack, userID int64) (int64, error) {
-	var id int64
+// InsertPilotTrack persists a new pilot track row, setting its ID and creation time.
+func InsertPilotTrack(db *DB, pilot *models.PilotTrack, userID int64) error {
+	var ct scanTime
 	err := db.QueryRow(
 		db.Rebind(`INSERT INTO pilot_tracks (track_id, user_id, name, filename, file_path, file_size, mime_type)
-		 VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`),
+		 VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at`),
 		pilot.TrackID, userID, pilot.Name, pilot.Filename, pilot.FilePath, pilot.FileSize, pilot.MimeType,
-	).Scan(&id)
+	).Scan(&pilot.ID, &ct)
 	if err != nil {
-		return 0, fmt.Errorf("insert pilot track: %w", err)
+		return fmt.Errorf("insert pilot track: %w", err)
 	}
-	return id, nil
+	pilot.CreatedAt = ct.T
+	return nil
 }
 
 // ListPilotTracks returns all pilot tracks for a drum track owned by the user.

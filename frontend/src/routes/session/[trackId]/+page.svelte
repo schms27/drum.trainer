@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { Gauge } from '@lucide/svelte';
 	import MidiDeviceSelector from '$lib/components/recorder/MidiDeviceSelector.svelte';
 	import PadCheck from '$lib/components/recorder/PadCheck.svelte';
@@ -111,7 +112,13 @@
 	let recordingActive = $state(false);
 	let calibrateOpen = $state(false);
 	let activeMetronome = $state<import('$lib/midi/metronome').Metronome | null>(null);
-	let currentBpm = $state(Math.round(track.practice_bpm ?? track.bpm));
+	// A ?bpm= link (e.g. "Try slower" on the results page) overrides the saved tempo.
+	const requestedBpm = Number(page.url.searchParams.get('bpm'));
+	let currentBpm = $state(
+		Number.isInteger(requestedBpm) && requestedBpm >= 20 && requestedBpm <= 300
+			? requestedBpm
+			: Math.round(track.practice_bpm ?? track.bpm)
+	);
 
 	const previewSpeed = $derived(currentBpm / track.bpm);
 	const latency = $derived(selectedDeviceId ? practiceSettings.latencyFor(selectedDeviceId) : null);
@@ -167,7 +174,7 @@
 	<PageHeader
 		title={track.name}
 		subtitle="{formatDuration(track.duration_ms)} · {Math.round(track.bpm)} BPM · {track.note_count} notes · {instrumentsUsed.join(', ')}"
-		back={{ href: '/', label: 'Library' }}
+		back={{ href: `/tracks/${track.id}`, label: 'Track details' }}
 	>
 		{#snippet actions()}
 			<PlayButton hits={track.notes} label="Listen to track" metronome={activeMetronome} speed={previewSpeed} />

@@ -14,6 +14,9 @@ export type StatsData = {
 		minutes_played: number;
 		tracks_practiced: number;
 	};
+	/** Consecutive days with practice, ending today (or yesterday). */
+	streak_days: number;
+	practiced_today: boolean;
 };
 
 /** Fetch weekly stats, bucketed into weeks in the browser's time zone. */
