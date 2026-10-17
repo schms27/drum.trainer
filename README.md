@@ -8,7 +8,9 @@ A web app for drummers to practice along with MIDI tracks and get scored on timi
 - Upload standard MIDI files as practice targets
 - Record live MIDI input from any e-drum kit or controller
 - Per-instrument scoring: notes hit, average timing, timing spread, extra hits
-- Backing tracks — upload audio files (WAV, MP3) that play back in sync with your first hit at any practice tempo
+- Backing tracks — upload audio files (WAV, MP3) that play back in sync with the track at any practice tempo
+- Start with a one-bar count-in (default) or on your first note; optional click during the take and automatic stop at the end
+- Pad check and timing calibration, which measures and corrects your kit's input delay
 - Light and dark theme (follows your system setting, or choose one)
 - Adjustable practice tempo with automatic time-scaling
 - Session history and weekly practice statistics

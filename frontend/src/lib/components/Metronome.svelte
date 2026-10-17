@@ -6,6 +6,7 @@
 		initialBpm = 120,
 		trackBpm = undefined,
 		beatsPerBar = 4,
+		locked = false,
 		onBpmChange = undefined,
 		onMetronomeChange = undefined
 	}: {
@@ -14,6 +15,8 @@
 		trackBpm?: number;
 		/** Beats per bar (time signature numerator) — sets the accent and beat lights. */
 		beatsPerBar?: number;
+		/** While true (e.g. during a take) the click is stopped and the tempo can't change. */
+		locked?: boolean;
 		/** Called whenever the user changes the BPM. */
 		onBpmChange?: (bpm: number) => void;
 		/** Called with the live Metronome instance when started, null when stopped. */
@@ -29,6 +32,20 @@
 	const nativeBpm = $derived(trackBpm !== undefined ? Math.round(trackBpm) : undefined);
 	const isModified = $derived(nativeBpm !== undefined && bpm !== nativeBpm);
 	const speedPct = $derived(nativeBpm ? Math.round((bpm / nativeBpm) * 100) : 100);
+
+	const PRESETS = [50, 75, 90, 100];
+
+	// A take has its own click on the recording clock — stop this one so the
+	// two never play at once.
+	$effect(() => {
+		if (locked && playing) toggle();
+	});
+
+	// Never leave a click running after the component is gone.
+	$effect(() => () => {
+		metronome?.stop();
+		metronome = null;
+	});
 
 	function onBeat(beatIndex: number) {
 		activeBeat = beatIndex;
@@ -68,8 +85,9 @@
 		<button
 			type="button"
 			onclick={() => applyBpm(bpm - 1)}
+			disabled={locked}
 			aria-label="Slower"
-			class="w-9 h-9 rounded-lg bg-control hover:bg-control-hover text-fg flex items-center justify-center cursor-pointer"
+			class="w-9 h-9 rounded-lg bg-control hover:bg-control-hover text-fg flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
 		>
 			<Minus size={16} aria-hidden="true" />
 		</button>
@@ -81,6 +99,7 @@
 				max="300"
 				value={bpm}
 				oninput={handleBpmInput}
+				disabled={locked}
 				class="w-16 h-9 text-center bg-control border border-line rounded-lg text-fg text-base font-mono tabular-nums
 					focus:outline-none focus:ring-2 focus:ring-accent
 					[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -90,8 +109,9 @@
 		<button
 			type="button"
 			onclick={() => applyBpm(bpm + 1)}
+			disabled={locked}
 			aria-label="Faster"
-			class="w-9 h-9 rounded-lg bg-control hover:bg-control-hover text-fg flex items-center justify-center cursor-pointer"
+			class="w-9 h-9 rounded-lg bg-control hover:bg-control-hover text-fg flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
 		>
 			<Plus size={16} aria-hidden="true" />
 		</button>
@@ -118,6 +138,25 @@
 		</div>
 	{/if}
 
+	{#if nativeBpm !== undefined}
+		<div class="flex flex-wrap items-center gap-1.5 w-full" role="group" aria-label="Speed presets">
+			<span class="text-sm text-fg-muted mr-1">Speed</span>
+			{#each PRESETS as pct (pct)}
+				{@const target = Math.round((nativeBpm * pct) / 100)}
+				<button
+					type="button"
+					onclick={() => applyBpm(target)}
+					disabled={locked}
+					aria-pressed={bpm === target}
+					class="h-8 px-3 rounded-lg text-sm tabular-nums transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed
+						{bpm === target ? 'bg-accent text-accent-fg' : 'bg-control text-fg hover:bg-control-hover'}"
+				>
+					{pct}%
+				</button>
+			{/each}
+		</div>
+	{/if}
+
 	<!-- Metronome -->
 	<div class="flex items-center gap-3 sm:ml-auto">
 		<div class="flex gap-1.5" aria-hidden="true">
@@ -131,8 +170,10 @@
 		<button
 			type="button"
 			onclick={toggle}
+			disabled={locked}
 			aria-pressed={playing}
 			class="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer
+				disabled:opacity-40 disabled:cursor-not-allowed
 				{playing ? 'bg-warn-solid text-white hover:opacity-90' : 'bg-control text-fg hover:bg-control-hover'}"
 		>
 			{#if playing}

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createRecorder } from '$lib/midi/recorder';
+import { resetMidiAccessForTests } from '$lib/midi/input';
 
 // --- Mock Web MIDI API ---
 
@@ -48,6 +49,7 @@ describe('createRecorder', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		resetMidiAccessForTests();
 		input = createMockInput();
 		stubMidiAccess(input);
 	});
@@ -167,6 +169,39 @@ describe('createRecorder', () => {
 			'midimessage',
 			expect.any(Function),
 		);
+	});
+
+	it('armAt() records immediately, relative to the given start time', async () => {
+		const rec = await createRecorder('dev-1');
+		rec.armAt(5000);
+		expect(rec.state).toBe('recording');
+		input.dispatch(noteOnMsg(36, 100), 5010);
+		input.dispatch(noteOnMsg(38, 90), 5510);
+		expect(rec.hits.map((h) => h.time_ms)).toEqual([10, 510]);
+	});
+
+	it('armAt() subtracts the latency correction', async () => {
+		const rec = await createRecorder('dev-1');
+		rec.armAt(5000, 25);
+		input.dispatch(noteOnMsg(36, 100), 5025);
+		expect(rec.hits[0].time_ms).toBe(0);
+	});
+
+	it('armAt() keeps slightly early hits but drops count-in noise', async () => {
+		const rec = await createRecorder('dev-1');
+		rec.armAt(5000);
+		input.dispatch(noteOnMsg(42, 80), 3000); // during the count-in
+		input.dispatch(noteOnMsg(36, 100), 4980); // 20 ms early for beat 1
+		expect(rec.hits.map((h) => h.time_ms)).toEqual([-20]);
+	});
+
+	it('setStartTime() moves time zero and shifts recorded hits', async () => {
+		const rec = await createRecorder('dev-1');
+		rec.armAt(5000);
+		input.dispatch(noteOnMsg(36, 100), 5100);
+		rec.setStartTime(5060);
+		input.dispatch(noteOnMsg(38, 90), 5560);
+		expect(rec.hits.map((h) => h.time_ms)).toEqual([40, 500]);
 	});
 
 	it('throws when the device id is not found', async () => {

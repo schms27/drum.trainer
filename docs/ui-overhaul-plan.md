@@ -3,7 +3,7 @@
 Branch: `ui-overhaul`. Goal: make the app self-explanatory and easier to use.
 Decisions below were settled on 2026-10-16.
 
-**Status:** phase 1 implemented on this branch; phases 2–4 not started.
+**Status:** phases 1 and 2 implemented; phases 3–4 not started.
 
 ## Problems found (review of every page, desktop + phone)
 
@@ -52,7 +52,7 @@ Decisions below were settled on 2026-10-16.
 - Practice page states why Start is disabled, inline.
 - History table becomes cards on narrow screens.
 
-### Phase 2 — Guided practice flow
+### Phase 2 — Guided practice flow ✅
 - Set up → Play → Review layout on the practice page.
 - Device check with live "hit a pad" indicator; device list refreshes when a kit is plugged in.
 - Speed presets (50/75/90/100%) next to the BPM control.

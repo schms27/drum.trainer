@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { RefreshCw } from '@lucide/svelte';
 	import { listMidiInputs, type MidiDevice } from '$lib/midi/recorder';
+	import { watchDevices } from '$lib/midi/input';
 	import Notice from '$lib/components/ui/Notice.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
@@ -37,6 +38,21 @@
 			return;
 		}
 		scan();
+		// Rescan automatically when a kit is plugged in or unplugged.
+		let unwatch: (() => void) | undefined;
+		let cancelled = false;
+		watchDevices(() => scan())
+			.then((u) => {
+				if (cancelled) u();
+				else unwatch = u;
+			})
+			.catch(() => {
+				// Permission denied — the manual "Scan again" button still works.
+			});
+		return () => {
+			cancelled = true;
+			unwatch?.();
+		};
 	});
 
 	function handleChange(e: Event) {
@@ -62,8 +78,8 @@
 {:else if devices.length === 0}
 	<div class="flex flex-col gap-3">
 		<Notice variant="warning">
-			No e-drum kit found. Connect it with a USB cable, switch it on, then scan again. If the
-			browser asked for permission to use MIDI devices, allow it.
+			No e-drum kit found. Connect it with a USB cable and switch it on — it shows up here
+			automatically. If the browser asked for permission to use MIDI devices, allow it.
 		</Notice>
 		<div><Button size="sm" onclick={scan}><RefreshCw size={14} aria-hidden="true" /> Scan again</Button></div>
 	</div>
