@@ -12,7 +12,8 @@ export async function getTrack(id: number): Promise<TrackWithNotes> {
 
 export async function uploadTrack(
 	file: File,
-	channel: number,
+	/** MIDI channel 1–16, or 'auto' to let the server find the drum part. */
+	channel: number | 'auto',
 	onProgress?: (pct: number) => void
 ): Promise<TrackWithNotes> {
 	return new Promise((resolve, reject) => {

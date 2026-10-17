@@ -1,7 +1,7 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import { fetchStats } from '$lib/api/stats';
 
-export const load: PageLoad = async () => {
-	const stats = await fetchStats();
-	return { stats };
+// History and Stats were merged into /progress.
+export const load: PageLoad = () => {
+	redirect(308, '/progress');
 };

@@ -82,7 +82,7 @@
 <PageHeader
 	title="Pad mapping"
 	subtitle={data.track.name}
-	back={{ href: '/', label: 'Library' }}
+	back={{ href: `/tracks/${data.track.id}`, label: data.track.name }}
 />
 
 <Notice>

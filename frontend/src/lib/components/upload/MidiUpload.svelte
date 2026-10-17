@@ -10,8 +10,8 @@
 	let uploading = $state(false);
 	let progress = $state(0);
 	let error = $state('');
-	// MIDI channel 10 is where General MIDI puts drums; most files use it.
-	let channel = $state(10);
+	// 'auto' lets the server find the drum part (channel 10 in most files).
+	let channel = $state<number | 'auto'>('auto');
 
 	async function handleFile(file: File) {
 		if (!/\.midi?$/i.test(file.name)) {
@@ -83,12 +83,13 @@
 				bind:value={channel}
 				class="bg-control text-fg text-sm rounded-lg px-2 h-9 border border-line focus:outline-none focus:ring-2 focus:ring-accent"
 			>
+				<option value="auto">Find automatically</option>
 				{#each Array.from({ length: 16 }, (_, i) => i + 1) as ch}
 					<option value={ch}>{ch}{ch === 10 ? ' (standard for drums)' : ''}</option>
 				{/each}
 			</select>
 			<p class="w-full text-fg-subtle">
-				Only change this if the upload says no notes were found — some files put drums on another channel.
+				The drum part is found automatically. Pick a channel only if the wrong part was used or none was found.
 			</p>
 		</div>
 	</details>

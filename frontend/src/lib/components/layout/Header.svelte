@@ -12,7 +12,7 @@
 
 	const navItems = [
 		{ href: '/', label: 'Library', icon: Library, match: (p: string) => p === '/' || p.startsWith('/tracks') || p.startsWith('/session') },
-		{ href: '/history', label: 'Progress', icon: ChartLine, match: (p: string) => p.startsWith('/history') || p.startsWith('/stats') || p.startsWith('/results') }
+		{ href: '/progress', label: 'Progress', icon: ChartLine, match: (p: string) => p.startsWith('/progress') || p.startsWith('/results') }
 	];
 
 	const path = $derived(page.url.pathname);

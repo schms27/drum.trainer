@@ -18,10 +18,6 @@
 		tracks = [rest, ...tracks];
 		showUpload = false;
 	}
-
-	function handleDeleted(id: number) {
-		tracks = tracks.filter((t) => t.id !== id);
-	}
 </script>
 
 <svelte:head><title>Library — Drum Trainer</title></svelte:head>
@@ -66,5 +62,5 @@
 		</Card>
 	{/if}
 
-	<TrackList {tracks} onDeleted={handleDeleted} />
+	<TrackList {tracks} />
 {/if}

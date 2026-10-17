@@ -7,13 +7,31 @@
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import { RotateCcw } from '@lucide/svelte';
+	import { RotateCcw, Turtle } from '@lucide/svelte';
+	import { summarizeTake } from '$lib/score-format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 	// svelte-ignore state_referenced_locally
-	const { sessionResult, track } = data;
+	const { sessionResult, track, previous, bestBefore } = data;
 	const { session, score } = sessionResult;
+
+	const matched = score.by_instrument.reduce((n, b) => n + b.matched_count, 0);
+	const target = score.by_instrument.reduce((n, b) => n + b.target_count, 0);
+	const weakest = [...score.by_instrument].sort((a, b) => b.missed_count - a.missed_count)[0];
+	const summary = summarizeTake({
+		hitRate: score.hit_rate,
+		matched,
+		target,
+		avgOffsetMs: score.avg_offset_ms,
+		weakest: weakest && weakest.missed_count > 0 ? { instrument: weakest.instrument, missed: weakest.missed_count } : null,
+		previousHitRate: previous?.hit_rate ?? null,
+		bestHitRate: bestBefore
+	});
+
+	// "Try slower": 90% of the tempo the track is currently practised at.
+	const practiceBpm = Math.round(track.practice_bpm ?? track.bpm);
+	const slowerBpm = Math.max(20, Math.round(practiceBpm * 0.9));
 
 	// Convert matched hits to the common PlayableHit shape for playback.
 	const recordingHits = score.matched_hits.map((h) => ({
@@ -28,16 +46,21 @@
 <PageHeader
 	title={track.name}
 	subtitle="Played {new Date(session.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {session.hit_count} hits recorded"
-	back={{ href: '/history', label: 'Progress' }}
+	back={{ href: `/tracks/${track.id}`, label: track.name }}
 >
 	{#snippet actions()}
+		<Button href="/session/{session.track_id}?bpm={slowerBpm}" variant="secondary" title="Practise at {slowerBpm} BPM">
+			<Turtle size={16} aria-hidden="true" /> Try slower
+		</Button>
 		<Button href="/session/{session.track_id}" variant="primary">
-			<RotateCcw size={16} aria-hidden="true" /> Practice again
+			<RotateCcw size={16} aria-hidden="true" /> Try again
 		</Button>
 	{/snippet}
 </PageHeader>
 
-<ScoreSummary {score} />
+<p class="text-lg text-fg">{summary}</p>
+
+<ScoreSummary {score} previousHitRate={previous?.hit_rate ?? null} bestHitRate={bestBefore} />
 
 <div class="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
 	<span>Compare by ear:</span>

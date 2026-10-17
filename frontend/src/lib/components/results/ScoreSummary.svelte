@@ -9,7 +9,19 @@
 		toneText
 	} from '$lib/score-format';
 
-	let { score }: { score: ScoreResult } = $props();
+	let {
+		score,
+		previousHitRate = null,
+		bestHitRate = null
+	}: {
+		score: ScoreResult;
+		/** Hit rate of the previous take on the same track. */
+		previousHitRate?: number | null;
+		/** Best hit rate on this track before this take. */
+		bestHitRate?: number | null;
+	} = $props();
+
+	const delta = $derived(previousHitRate === null ? null : Math.round((score.hit_rate - previousHitRate) * 100));
 
 	const targetCount = $derived(score.by_instrument.reduce((n, b) => n + b.target_count, 0));
 	const matchedCount = $derived(score.by_instrument.reduce((n, b) => n + b.matched_count, 0));
@@ -23,6 +35,17 @@
 			{formatPercent(score.hit_rate)}
 		</p>
 		<p class="text-xs text-fg-subtle mt-1">{matchedCount} of {targetCount} notes</p>
+		{#if delta !== null}
+			<p class="text-xs mt-1 {delta > 0 ? 'text-good' : delta < 0 ? 'text-bad' : 'text-fg-subtle'}">
+				{delta > 0 ? '▲' : delta < 0 ? '▼' : '='}
+				{delta === 0 ? 'same as' : `${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'point' : 'points'} vs`} last take
+			</p>
+		{/if}
+		{#if bestHitRate !== null}
+			<p class="text-xs text-fg-subtle">
+				{score.hit_rate > bestHitRate ? 'New best!' : `Best: ${formatPercent(bestHitRate)}`}
+			</p>
+		{/if}
 	</div>
 
 	<div class="bg-card border border-line rounded-xl p-5">
