@@ -57,7 +57,11 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 
 	// Verify track exists and belongs to this user, then load target notes.
-	_, err := dbpkg.GetTrack(h.db, req.TrackID, user.ID)
+	track, err := dbpkg.GetTrack(h.db, req.TrackID, user.ID)
+	if err == nil && track.Disabled {
+		writeError(w, http.StatusConflict, "this track was removed after a report and can't be practised")
+		return
+	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "track not found")

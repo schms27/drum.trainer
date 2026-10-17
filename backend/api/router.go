@@ -46,9 +46,12 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 	ph := &pilotsHandler{db: db, store: store, maxBytes: maxPilotBytes}
 	kh := &kitsHandler{db: db}
 	shh := &sharingHandler{db: db, secret: cfg.SessionSecret}
+	rh := &reportsHandler{db: db, secret: cfg.SessionSecret}
+	adh := &adminHandler{db: db}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
+		r.Get("/site", siteHandler(cfg))
 
 		// Auth — public (no session required).
 		r.With(httprate.LimitByIP(10, time.Minute)).Get("/auth/{provider}/login", ah.login)
@@ -58,6 +61,9 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 
 		// Shared track landing page — public, the link token is the credential.
 		r.With(httprate.LimitByIP(60, time.Minute)).Get("/shared/{token}", shh.get)
+
+		// Copyright / abuse reports — public so rights holders need no account.
+		r.With(httprate.LimitByIP(5, time.Hour)).Post("/reports", rh.create)
 
 		// Protected resources — session cookie required.
 		r.Group(func(r chi.Router) {
@@ -98,10 +104,27 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 			r.Put("/kits/active", kh.setActive)
 			r.Put("/kits/{id}", kh.update)
 			r.Delete("/kits/{id}", kh.delete)
+
+			// Moderation — ADMIN_EMAILS only.
+			r.Route("/admin", func(r chi.Router) {
+				r.Use(RequireAdmin(cfg))
+				r.Get("/reports", adh.listReports)
+				r.Post("/reports/{id}/reject", adh.rejectReport)
+				r.Post("/tracks/{id}/disable", adh.disableTrack)
+				r.Post("/tracks/{id}/restore", adh.restoreTrack)
+			})
 		})
 	})
 
 	return r
+}
+
+// siteHandler serves public, non-secret site settings to the frontend, which is
+// a prebuilt static app and can't be configured at deploy time itself.
+func siteHandler(cfg config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"contact_email": cfg.ContactEmail})
+	}
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

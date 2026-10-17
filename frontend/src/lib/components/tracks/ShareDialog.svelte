@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { Check, Copy, Link2, RefreshCw } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Notice from '$lib/components/ui/Notice.svelte';
@@ -120,6 +121,14 @@
 					</Button>
 					<Button variant="ghost" onclick={() => (open = false)}>Done</Button>
 				</div>
+			</div>
+		{:else if page.data.user?.sharing_banned}
+			<Notice variant="error">
+				Sharing is turned off for your account because several tracks you shared were removed after copyright reports.
+				See our <a href="/copyright" class="text-accent-text hover:underline">copyright policy</a>.
+			</Notice>
+			<div class="flex justify-end">
+				<Button variant="ghost" onclick={() => (open = false)}>Close</Button>
 			</div>
 		{:else}
 			<fieldset class="flex flex-col gap-2">

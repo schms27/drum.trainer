@@ -1,9 +1,12 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	// Keep in sync with TermsVersion in backend/api/sharing.go.
 	const version = '17 October 2026';
-	const contact: string | undefined = import.meta.env.VITE_CONTACT_EMAIL;
+	const contact = $derived(data.site.contact_email);
 </script>
 
 <svelte:head><title>Terms of use — Drum Trainer</title></svelte:head>
@@ -59,14 +62,12 @@
 	<section id="report">
 		<h2>Reporting a copyright problem</h2>
 		<p>
-			If you believe a shared track infringes your copyright, send us the share link, the work you believe is
-			infringed, how we can reach you, and a statement that you’re reporting in good faith.
+			If you believe a shared track infringes your copyright, use the
+			<a href="/report" class="text-accent-text hover:underline">report form</a> — no account needed. Our
+			<a href="/copyright" class="text-accent-text hover:underline">copyright policy</a> explains what happens next.
 			{#if contact}
-				Write to <a href="mailto:{contact}" class="text-accent-text hover:underline">{contact}</a>.
-			{:else}
-				Contact the operator of this site.
+				You can also write to <a href="mailto:{contact}" class="text-accent-text hover:underline">{contact}</a>.
 			{/if}
-			We review reports promptly and turn off infringing links.
 		</p>
 	</section>
 </article>

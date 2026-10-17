@@ -53,9 +53,10 @@ func GetUserByID(db *DB, id int64) (*models.User, error) {
 	var user models.User
 	var ct scanTime
 	err := db.QueryRow(
-		db.Rebind(`SELECT id, provider, email, name, avatar_url, created_at FROM users WHERE id = ?`),
+		db.Rebind(`SELECT id, provider, email, name, avatar_url, created_at, sharing_banned_at IS NOT NULL
+		 FROM users WHERE id = ?`),
 		id,
-	).Scan(&user.ID, &user.Provider, &user.Email, &user.Name, &user.AvatarURL, &ct)
+	).Scan(&user.ID, &user.Provider, &user.Email, &user.Name, &user.AvatarURL, &ct, &user.SharingBanned)
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +80,12 @@ func ValidateSession(db *DB, token string) (*models.User, error) {
 	var user models.User
 	var ct scanTime
 	err := db.QueryRow(
-		db.Rebind(`SELECT u.id, u.provider, u.email, u.name, u.avatar_url, u.created_at
+		db.Rebind(`SELECT u.id, u.provider, u.email, u.name, u.avatar_url, u.created_at, u.sharing_banned_at IS NOT NULL
 		 FROM user_sessions s
 		 JOIN users u ON u.id = s.user_id
 		 WHERE s.token = ? AND s.expires_at > ?`),
 		token, time.Now().UTC().Format(time.RFC3339),
-	).Scan(&user.ID, &user.Provider, &user.Email, &user.Name, &user.AvatarURL, &ct)
+	).Scan(&user.ID, &user.Provider, &user.Email, &user.Name, &user.AvatarURL, &ct, &user.SharingBanned)
 	if err != nil {
 		return nil, err
 	}

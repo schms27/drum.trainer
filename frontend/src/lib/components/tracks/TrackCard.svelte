@@ -27,9 +27,11 @@
 			<span class="inline-flex items-center gap-1"><Clock size={13} aria-hidden="true" />{formatDuration(track.duration_ms)}</span>
 			<span class="inline-flex items-center gap-1"><Gauge size={13} aria-hidden="true" />{Math.round(track.bpm)} BPM</span>
 			<span>{track.note_count} notes</span>
-			{#if track.share_token}
+			{#if track.disabled}
+				<span class="text-bad font-medium">Removed</span>
+			{:else if track.share_token}
 				<span class="inline-flex items-center gap-1 text-accent-text"><Link2 size={13} aria-hidden="true" />Shared</span>
-			{:else if track.source_track_id !== null}
+			{:else if track.copied}
 				<span class="text-fg-subtle">From a share link</span>
 			{/if}
 		</p>
@@ -52,7 +54,11 @@
 		<p class="text-sm text-fg-subtle">Not practised yet</p>
 	{/if}
 
-	<Button href="/session/{track.id}" variant="primary" block class="relative z-10">
-		<Play size={16} aria-hidden="true" /> Practice
-	</Button>
+	{#if track.disabled}
+		<Button href="/tracks/{track.id}" variant="secondary" block class="relative z-10">Why was it removed?</Button>
+	{:else}
+		<Button href="/session/{track.id}" variant="primary" block class="relative z-10">
+			<Play size={16} aria-hidden="true" /> Practice
+		</Button>
+	{/if}
 </article>

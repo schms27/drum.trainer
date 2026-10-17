@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Library, ChartLine, LogOut, Menu, X, SlidersHorizontal } from '@lucide/svelte';
+	import { Library, ChartLine, LogOut, Menu, X, SlidersHorizontal, Flag } from '@lucide/svelte';
 	import { logout, type AuthUser } from '$lib/api/auth';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 
@@ -10,10 +10,13 @@
 	let menuOpen = $state(false);
 	let menuEl = $state<HTMLDivElement>();
 
-	const navItems = [
+	const navItems = $derived([
 		{ href: '/', label: 'Library', icon: Library, match: (p: string) => p === '/' || p.startsWith('/tracks') || p.startsWith('/session') },
-		{ href: '/progress', label: 'Progress', icon: ChartLine, match: (p: string) => p.startsWith('/progress') || p.startsWith('/results') }
-	];
+		{ href: '/progress', label: 'Progress', icon: ChartLine, match: (p: string) => p.startsWith('/progress') || p.startsWith('/results') },
+		...(user.is_admin
+			? [{ href: '/admin/reports', label: 'Reports', icon: Flag, match: (p: string) => p.startsWith('/admin') }]
+			: [])
+	]);
 
 	const path = $derived(page.url.pathname);
 

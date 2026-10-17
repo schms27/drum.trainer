@@ -171,6 +171,53 @@ MIDI file, backing tracks, practice tempo or takes. Copying again returns the ex
 
 ---
 
+## Reports and moderation
+
+Track objects also carry `copied` (true for every copy, even after the original is deleted),
+`disabled` and `disabled_reason`. A disabled track is returned with `notes: []`, can't be shared,
+and `POST /sessions` for it returns `409`. `GET /auth/me` adds `sharing_banned` and `is_admin`.
+
+### POST /api/v1/reports
+
+**No session required.** Rate-limited to 5 per hour per IP, counting invalid submissions.
+
+**Request:**
+```json
+{
+  "token": "https://drums.example.com/s/abc…",
+  "kind": "copyright",
+  "reporter_name": "Jane Doe",
+  "reporter_email": "jane@example.com",
+  "work_identified": "Song X by Band Y",
+  "details": "The shared track copies our drum part note for note.",
+  "good_faith": true
+}
+```
+`token` may be a bare token or a full share link. `kind` is `copyright`, `abuse` or `other`;
+copyright reports need `work_identified` and `good_faith: true`.
+
+**Response `201 Created`:** `{ "id": 1 }` · `400` invalid fields · `404` link not (or no longer) shared · `429` rate limit
+
+### Admin endpoints
+
+Only for users whose email is listed in `ADMIN_EMAILS`; everyone else gets `404`.
+
+| Method | Path | Body | Effect |
+|---|---|---|---|
+| `GET` | `/api/v1/admin/reports?status=open\|actioned\|rejected\|all` | — | Reports with the track's state, copy count and owner (name, email, strikes, ban) |
+| `POST` | `/api/v1/admin/reports/:id/reject` | `{ "note": "…" }` | Closes an open report without action |
+| `POST` | `/api/v1/admin/tracks/:id/disable` | `{ "reason": "…", "strike": true }` | Disables the track and every copy, kills the link, blocks its note fingerprint from being shared again, closes its open reports. `reason` is shown to the owner and copy holders. A strike counts once per takedown; 3 strikes ban the owner from sharing and unshare all their tracks |
+| `POST` | `/api/v1/admin/tracks/:id/restore` | `{ "note": "…", "revoke_strike": true }` | Undoes a takedown (tracks stay private), unblocks the fingerprint, marks its reports rejected; revoking a strike lifts a ban below the limit |
+
+`disable` and `restore` return `{ "tracks_affected": 2, "owner_strikes": 1, "owner_banned": false }`.
+
+### GET /api/v1/site
+
+**No session required.** Public settings for the static frontend: `{ "contact_email": "…" }`
+(from `CONTACT_EMAIL`, empty if unset).
+
+---
+
 ## Sessions
 
 ### POST /api/v1/sessions

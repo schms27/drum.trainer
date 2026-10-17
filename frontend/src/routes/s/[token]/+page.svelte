@@ -105,7 +105,7 @@
 			Drum Trainer users share tracks under their own responsibility. Adding it gives you your own copy of the drum
 			notes; backing audio isn’t shared.
 		</p>
-		<a href="/terms#report" class="inline-flex items-center gap-1.5 text-xs text-fg-subtle hover:text-fg mt-4">
+		<a href="/report?token={encodeURIComponent(token)}" class="inline-flex items-center gap-1.5 text-xs text-fg-subtle hover:text-fg mt-4">
 			<Flag size={13} aria-hidden="true" /> Report a copyright problem
 		</a>
 	</Card>

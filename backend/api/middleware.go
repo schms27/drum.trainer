@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/simu/drum-trainer/backend/config"
 	dbpkg "github.com/simu/drum-trainer/backend/db"
 	"github.com/simu/drum-trainer/backend/models"
 )
@@ -30,6 +31,23 @@ func RequireAuth(db *dbpkg.DB) func(http.Handler) http.Handler {
 			}
 			ctx := context.WithValue(r.Context(), userContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RequireAdmin is middleware, used after RequireAuth, that only lets through
+// users whose email is listed in ADMIN_EMAILS. Others get a 404 so the admin
+// API doesn't advertise itself.
+func RequireAdmin(cfg config.Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := UserFromContext(r.Context())
+			if user == nil || !cfg.IsAdmin(user.Email) {
+				writeError(w, http.StatusNotFound, "not found")
+				return
+			}
+			user.IsAdmin = true
+			next.ServeHTTP(w, r)
 		})
 	}
 }

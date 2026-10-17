@@ -18,6 +18,13 @@ var ErrCopyNotShareable = errors.New("copies of shared tracks cannot be shared")
 // ErrNotShared is returned when rotating the link of a track that is private.
 var ErrNotShared = errors.New("track is not shared")
 
+// ErrTrackDisabled is returned when sharing a track that moderation removed.
+var ErrTrackDisabled = errors.New("this track was removed after a report and can't be shared")
+
+// ErrBlockedContent is returned when sharing a track whose notes match a track
+// that was removed after a report.
+var ErrBlockedContent = errors.New("this track matches one that was removed after a copyright report, so it can't be shared")
+
 // ShareEvent records who changed a track's sharing, and what they attested to.
 type ShareEvent struct {
 	Action      string // "share" | "rotate" | "unshare"
@@ -39,6 +46,17 @@ func newShareToken() string {
 // link token. An already-shared track keeps its token; only the rights
 // declaration is updated.
 func ShareTrack(db *DB, trackID, userID int64, ev ShareEvent) (string, error) {
+	// Fingerprint before the transaction: SQLite runs with a single connection.
+	fp, err := TrackFingerprint(db, trackID)
+	if err != nil {
+		return "", err
+	}
+	if blocked, err := IsFingerprintBlocked(db, fp); err != nil {
+		return "", err
+	} else if blocked {
+		return "", ErrBlockedContent
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return "", err
@@ -46,14 +64,20 @@ func ShareTrack(db *DB, trackID, userID int64, ev ShareEvent) (string, error) {
 	defer tx.Rollback()
 
 	var token sql.NullString
-	var sourceID sql.NullInt64
+	var originID sql.NullInt64
+	var disabled bool
 	err = tx.QueryRow(
-		db.Rebind(`SELECT share_token, source_track_id FROM tracks WHERE id = ? AND user_id = ?`), trackID, userID,
-	).Scan(&token, &sourceID)
+		db.Rebind(`SELECT share_token, origin_track_id, disabled_at IS NOT NULL FROM tracks WHERE id = ? AND user_id = ?`), trackID, userID,
+	).Scan(&token, &originID, &disabled)
 	if err != nil {
 		return "", err
 	}
-	if sourceID.Valid {
+	if disabled {
+		return "", ErrTrackDisabled
+	}
+	// origin_track_id, not source_track_id: the latter is cleared when the
+	// original is deleted, which must not make a copy shareable.
+	if originID.Valid {
 		return "", ErrCopyNotShareable
 	}
 
@@ -209,8 +233,8 @@ func CopyTrack(db *DB, sourceID, userID int64) (int64, error) {
 
 	var newID int64
 	err = tx.QueryRow(db.Rebind(`INSERT INTO tracks
-		(name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, user_id, source_track_id)
-		SELECT name, filename, '', file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, CAST(? AS INTEGER), id
+		(name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, user_id, source_track_id, origin_track_id)
+		SELECT name, filename, '', file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, CAST(? AS INTEGER), id, id
 		FROM tracks WHERE id = ?
 		RETURNING id`), userID, sourceID,
 	).Scan(&newID)

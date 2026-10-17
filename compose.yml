@@ -36,6 +36,8 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       DEV_MODE: ${DEV_MODE}
       SESSION_SECRET: ${SESSION_SECRET}
+      ADMIN_EMAILS: ${ADMIN_EMAILS}
+      CONTACT_EMAIL: ${CONTACT_EMAIL}
     volumes:
       - ${CONTAINER_MOUNTS_PATH}/drum-trainer/data:/data
     healthcheck:
