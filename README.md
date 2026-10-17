@@ -1,21 +1,96 @@
-# drum.trainer
+<p align="center">
+  <img src="frontend/static/logo.svg" alt="Drum Trainer logo" width="112" height="112">
+</p>
 
-A web app for drummers to practice along with MIDI tracks and get scored on timing accuracy. Upload a MIDI file, connect your e-drum kit via USB, record a take, and see which notes you hit, missed, or played early or late, per instrument.
+<h1 align="center">Drum Trainer</h1>
 
+<p align="center">
+  <strong>Practise along with any MIDI drum track on your e-drum kit and see exactly how well you played, note by note.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/schms27/drum.trainer/actions/workflows/docker.yml?query=branch%3Amain"><img src="https://github.com/schms27/drum.trainer/actions/workflows/docker.yml/badge.svg?branch=main" alt="Build status on main"></a>
+  <a href="https://github.com/schms27/drum.trainer/releases/latest"><img src="https://img.shields.io/github/v/release/schms27/drum.trainer?sort=semver&label=release" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/schms27/drum.trainer" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#self-hosting-with-docker-compose">Self-hosting</a> ·
+  <a href="#local-development">Development</a> ·
+  <a href="#releasing-a-new-version">Releases</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/results.png" alt="Results of a take: 92% of notes hit, +1 ms average timing, ±9 ms spread, broken down by instrument" width="880">
+</p>
+
+---
+
+Playing along to a song feels great, but it's hard to hear whether that fill was really on time or which hi-hat notes you keep dropping. **Drum Trainer listens to your kit instead.** Load the part you want to learn as a MIDI file, plug in your e-drums over USB and play. Afterwards you see every note you hit, missed or rushed, how steady your timing was and whether you're getting better over time.
+
+It runs in the browser, needs no install for players, and you can host it yourself with a single Docker Compose file.
+
+## How it works
+
+1. **Add a track:** upload a standard MIDI file. The drum part is found automatically.
+2. **Connect your kit:** plug your e-drums in over USB, run the pad check once and map your pads to instruments.
+3. **Play:** with a count-in, an optional click and your own backing track, at full speed or slowed down.
+4. **See how it went:** a score for every take, per instrument and per note, plus your progress across takes.
 
 ## Features
 
-- Upload standard MIDI files as practice targets
-- Record live MIDI input from any e-drum kit or controller
-- Per-instrument scoring: notes hit, average timing, timing spread, extra hits
-- Backing tracks — upload audio files (WAV, MP3) that play back in sync with the track at any practice tempo
-- Start with a one-bar count-in (default) or on your first note; optional click during the take and automatic stop at the end
-- Pad check and timing calibration, which measures and corrects your kit's input delay
-- Kit profiles: map your kit's pads to instruments once (hit each pad to learn it), used for scoring every track
-- Light and dark theme (follows your system setting, or choose one)
-- Adjustable practice tempo with automatic time-scaling
-- Session history and weekly practice statistics
+### Practise
+
+- **Any MIDI file** as a practice target, with automatic drum-channel detection
+- **Adjustable tempo:** slow a track down and the target, scoring and backing audio all scale with it
+- **Backing tracks:** add audio (MP3, WAV, OGG, FLAC, AAC, M4A), such as the song without drums, and it plays in sync at any tempo
+- **Count-in and click:** start with a one-bar count-in or on your first note, with an optional click during the take and an automatic stop at the end
+- **Kit profiles:** map your kit's pads to instruments once by hitting each pad, then use the mapping for every track
+
+### Get feedback
+
+- **Score for every take:** notes hit, average timing (early or late), timing spread and extra hits
+- **Per instrument:** see whether it's the snare or the toms that need work
+- **Note by note:** a timeline of every target note and what you played, with timing to the millisecond
+- **Compare by ear:** listen to the track, then to your take
+
+<p align="center">
+  <img src="docs/screenshots/timeline.png" alt="Note-by-note timeline: each target note marked as on time, close, early or late, or missed" width="880">
+</p>
+
+### Track your progress
+
+- **Progress per track:** your notes-hit rate across takes, best and last take, how often you've practised
+- **History and weekly stats:** every take kept, with a weekly overview of your practice time
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/library.png" alt="Library with three tracks, each showing the best score and a trend line"></td>
+    <td width="50%"><img src="docs/screenshots/progress.png" alt="Track page with a chart of notes hit per take, rising from 63% to 92% over two weeks"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Your library at a glance</sub></td>
+    <td align="center"><sub>Watch a track come together</sub></td>
+  </tr>
+</table>
+
+### Share with other drummers
+
+- **Share by link:** send a track to a bandmate or your students. They add their own copy and practise it with their own scores.
+- **Explore:** list your grooves and exercises publicly so any drummer can find them, search them and add them to their library
+- **Only the drum notes are shared:** the original MIDI file, your backing audio and your practice history stay private
+- **Built for responsible sharing:** owners declare where each part comes from, and transcriptions of other people's songs can't be listed publicly. Anyone can report a track, and admins can review reports, remove tracks together with all their copies and block repeat infringers.
+
+<p align="center">
+  <img src="docs/screenshots/explore.png" alt="Explore page listing public tracks with search and sorting" width="880">
+</p>
+
+### And also
+
+- Light and dark theme (follows your system, or choose one)
 - Sign in with Google or GitHub
+- Runs on PostgreSQL or zero-config SQLite; database migrations run automatically on startup
 
 ## Browser Requirements
 
@@ -231,4 +306,4 @@ To roll back, set `DRUM_TRAINER_VERSION` to the previous version and run the sam
 
 ## License
 
-MIT
+[MIT](LICENSE)
