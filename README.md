@@ -205,7 +205,7 @@ Each release produces these image tags for both images:
 |---|---|
 | Exact version | `1.2.3` |
 | Major.minor | `1.2` |
-| Major (from 1.0.0 on) | `1` |
+| Major | `1` |
 | Short SHA | `a3f9c12` |
 
 Every push to `main` also publishes `latest` and a short-SHA tag.
