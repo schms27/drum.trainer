@@ -43,6 +43,8 @@ sort_commits = "oldest"
 commit_parsers = [
   # Release bookkeeping and noise.
   { message = "^chore\\(release\\)", skip = true },
+  # Merge commits repeat the PR's own commits, which are listed individually.
+  { message = "^Merge (pull request|branch|remote-tracking branch) ", skip = true },
   { message = "(?i)^(fi+x|fix again|more fixing|bullshit change|cleanup|wip)\\s*$", skip = true },
 
   { message = "(?i)^feat", group = "<!-- 0 -->Features" },
