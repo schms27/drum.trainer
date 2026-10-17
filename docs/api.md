@@ -112,6 +112,65 @@ Delete a track, all associated sessions and scores (via SQLite CASCADE), and the
 
 ---
 
+## Sharing
+
+Tracks can be shared through an unlisted link. Every track object carries `visibility`
+(`"private"` | `"unlisted"`), `share_token` (null while private), `rights_basis` and
+`source_track_id` (set on copies made from someone else's link). See
+[sharing-plan.md](sharing-plan.md) for the design.
+
+### PUT /api/v1/tracks/:id/sharing
+
+Share a track by link, or update the rights declaration of an already-shared track (the token
+is kept). Records an entry in `track_share_events` with the current terms version.
+
+**Request:** `{ "rights_basis": "original" | "licensed" | "public_domain" | "transcription", "accept_terms": true }`
+
+**Response `200 OK`:** `{ "visibility": "unlisted", "share_token": "…", "rights_basis": "original" }`
+
+**Error responses:**
+- `400 Bad Request` — invalid `rights_basis`, or `accept_terms` is not `true`
+- `404 Not Found` — not the caller's track
+- `409 Conflict` — the track is a copy of someone else's shared track
+
+### POST /api/v1/tracks/:id/sharing/rotate
+
+Replace the link token; the old link stops working. **Response `200 OK`:** `{ "visibility": "unlisted", "share_token": "…" }`. `409` if the track isn't shared.
+
+### DELETE /api/v1/tracks/:id/sharing
+
+Make the track private and clear its token. Existing copies are kept. **Response `204 No Content`**
+
+### GET /api/v1/shared/:token
+
+**No session required.** Metadata and the opening four bars of a shared track; the full note
+list is never returned here. Sent with `X-Robots-Tag: noindex, nofollow`.
+
+**Response `200 OK`:**
+```json
+{
+  "name": "test_beat", "duration_ms": 8000, "note_count": 48, "bpm": 120, "time_sig_numerator": 4,
+  "rights_basis": "original", "shared_at": "2026-10-17T15:05:00Z",
+  "instruments": { "Bass Drum": 8, "Snare": 8, "Hi-Hat": 32 },
+  "preview_notes": [ { "note_number": 36, "time_ms": 0, "velocity": 100, "instrument": "Bass Drum" } ],
+  "preview_ms": 8000,
+  "is_owner": false,
+  "copied_track_id": null
+}
+```
+`is_owner` and `copied_track_id` are only filled when the request carries a valid session.
+
+**Error responses:** `404 Not Found` — unknown token, reset link, or track no longer shared.
+
+### POST /api/v1/shared/:token/copy
+
+Copy the shared track into the caller's library: notes and note mapping, but not the original
+MIDI file, backing tracks, practice tempo or takes. Copying again returns the existing copy.
+
+**Response `201 Created`** (or `200 OK` for the owner's own track): `{ "track_id": 7 }`
+
+---
+
 ## Sessions
 
 ### POST /api/v1/sessions

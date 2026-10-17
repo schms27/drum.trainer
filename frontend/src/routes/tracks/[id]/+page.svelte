@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Play, SlidersHorizontal, Trash, ChevronRight } from '@lucide/svelte';
+	import { Play, SlidersHorizontal, Trash, ChevronRight, Share2 } from '@lucide/svelte';
 	import { deleteTrack } from '$lib/api/tracks';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -8,6 +8,7 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import BackingTracks from '$lib/components/tracks/BackingTracks.svelte';
+	import ShareDialog from '$lib/components/tracks/ShareDialog.svelte';
 	import AccuracyChart from '$lib/components/charts/AccuracyChart.svelte';
 	import {
 		formatOffset,
@@ -21,12 +22,16 @@
 
 	let { data }: { data: PageData } = $props();
 	// svelte-ignore state_referenced_locally
-	const { track, takes, hasMoreTakes } = data;
+	const { takes, hasMoreTakes } = data;
+	// svelte-ignore state_referenced_locally
+	let track = $state(data.track);
 	// svelte-ignore state_referenced_locally
 	let backing = $state(data.pilots);
 	let confirmDelete = $state(false);
+	let shareOpen = $state(false);
 
-	const stats = track.stats;
+	// svelte-ignore state_referenced_locally
+	const stats = data.track.stats;
 	// The API lists newest first; the chart wants oldest first.
 	const chronological = [...takes].reverse();
 
@@ -132,6 +137,24 @@
 			</Button>
 		</Card>
 
+		{#if track.source_track_id !== null}
+			<Card title="Sharing" description="You added this track from someone’s share link, so it can’t be shared further.">
+				<p class="text-sm text-fg-muted">It’s your own copy: changes you make don’t affect the original.</p>
+			</Card>
+		{:else}
+			<Card
+				title="Sharing"
+				description={track.share_token
+					? 'Shared by link. Anyone with the link can add a copy to their library.'
+					: 'Private. Create a link to let other drummers practise this track.'}
+			>
+				<Button variant="secondary" onclick={() => (shareOpen = true)}>
+					<Share2 size={16} aria-hidden="true" />
+					{track.share_token ? 'Manage link' : 'Share by link'}
+				</Button>
+			</Card>
+		{/if}
+
 		<Card title="Delete track" description="Removes the track, its backing tracks and all takes recorded for it.">
 			<Button variant="secondary" onclick={() => (confirmDelete = true)} class="text-bad">
 				<Trash size={16} aria-hidden="true" /> Delete track
@@ -140,10 +163,14 @@
 	</div>
 </div>
 
+<ShareDialog bind:open={shareOpen} bind:track />
+
 <ConfirmDialog
 	bind:open={confirmDelete}
 	title="Delete “{track.name}”?"
-	message="This removes the track, its backing tracks and all practice sessions recorded for it. This cannot be undone."
+	message={track.share_token
+		? 'This removes the track, its backing tracks and all practice sessions recorded for it, and the share link stops working. Copies others already added are kept. This cannot be undone.'
+		: 'This removes the track, its backing tracks and all practice sessions recorded for it. This cannot be undone.'}
 	confirmLabel="Delete track"
 	danger
 	onConfirm={handleDelete}

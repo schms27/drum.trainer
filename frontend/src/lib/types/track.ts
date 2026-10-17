@@ -17,6 +17,12 @@ export interface Track {
 	time_sig_numerator: number;
 	practice_bpm: number | null;
 	created_at: string;
+	visibility: Visibility;
+	/** Link token while the track is shared; null when private. */
+	share_token: string | null;
+	rights_basis: RightsBasis | null;
+	/** Set when this track is a copy of someone else's shared track. */
+	source_track_id: number | null;
 	/** Practice progress on this track (list and detail endpoints). */
 	stats?: TrackStats;
 }
@@ -37,4 +43,27 @@ export interface TrackWithNotes extends Track {
 export interface NoteMapping {
 	note_number: number;
 	instrument: string;
+}
+
+export type Visibility = 'private' | 'unlisted';
+
+export type RightsBasis = 'original' | 'licensed' | 'public_domain' | 'transcription';
+
+/** What anyone with a share link sees: metadata and the opening bars only. */
+export interface SharedTrack {
+	name: string;
+	duration_ms: number;
+	note_count: number;
+	bpm: number;
+	time_sig_numerator: number;
+	rights_basis: RightsBasis;
+	shared_at: string;
+	/** Note count per instrument group. */
+	instruments: Record<string, number>;
+	preview_notes: NoteEvent[];
+	/** Length of the preview in ms. */
+	preview_ms: number;
+	is_owner: boolean;
+	/** The viewer's existing copy, if they already added it. */
+	copied_track_id: number | null;
 }

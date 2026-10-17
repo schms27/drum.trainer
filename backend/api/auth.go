@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	authpkg "github.com/simu/drum-trainer/backend/auth"
@@ -14,6 +15,10 @@ import (
 
 const sessionCookieName = "drum_session"
 const sessionMaxAge = 30 * 24 * 60 * 60 // 30 days in seconds
+
+// nextCookieName holds where to send the user after sign-in (e.g. back to a
+// shared track's page).
+const nextCookieName = "drum_next"
 
 type authHandler struct {
 	db  *dbpkg.DB
@@ -35,7 +40,31 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if next := r.URL.Query().Get("next"); safeNextPath(next) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     nextCookieName,
+			Value:    next,
+			Path:     "/",
+			MaxAge:   600,
+			HttpOnly: true,
+			Secure:   !h.cfg.DevMode,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+
 	http.Redirect(w, r, conf.AuthCodeURL(state), http.StatusTemporaryRedirect)
+}
+
+// safeNextPath reports whether p is a same-origin path that is safe to
+// redirect to after sign-in, so ?next= cannot become an open redirect.
+func safeNextPath(p string) bool {
+	if len(p) < 1 || len(p) > 512 || p[0] != '/' {
+		return false
+	}
+	if len(p) > 1 && (p[1] == '/' || p[1] == '\\') {
+		return false // protocol-relative URL
+	}
+	return !strings.ContainsAny(p, "\\\r\n")
 }
 
 // GET /api/v1/auth/{provider}/callback
@@ -97,7 +126,13 @@ func (h *authHandler) callback(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	dest := "/"
+	if c, err := r.Cookie(nextCookieName); err == nil && safeNextPath(c.Value) {
+		dest = c.Value
+	}
+	http.SetCookie(w, &http.Cookie{Name: nextCookieName, Value: "", Path: "/", MaxAge: -1})
+
+	http.Redirect(w, r, dest, http.StatusTemporaryRedirect)
 }
 
 // POST /api/v1/auth/logout

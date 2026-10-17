@@ -45,6 +45,7 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 	sth := &statsHandler{db: db}
 	ph := &pilotsHandler{db: db, store: store, maxBytes: maxPilotBytes}
 	kh := &kitsHandler{db: db}
+	shh := &sharingHandler{db: db, secret: cfg.SessionSecret}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
@@ -54,6 +55,9 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 		r.Get("/auth/{provider}/callback", ah.callback)
 		r.Post("/auth/logout", ah.logout)
 		r.Get("/auth/me", ah.me)
+
+		// Shared track landing page — public, the link token is the credential.
+		r.With(httprate.LimitByIP(60, time.Minute)).Get("/shared/{token}", shh.get)
 
 		// Protected resources — session cookie required.
 		r.Group(func(r chi.Router) {
@@ -67,6 +71,12 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 			r.Patch("/tracks/{id}/practice-bpm", th.setPracticeBPM)
 			r.Get("/tracks/{id}/mapping", th.getMapping)
 			r.Put("/tracks/{id}/mapping", th.updateMapping)
+
+			// Sharing.
+			r.Put("/tracks/{id}/sharing", shh.share)
+			r.Post("/tracks/{id}/sharing/rotate", shh.rotate)
+			r.Delete("/tracks/{id}/sharing", shh.unshare)
+			r.With(httprate.LimitByIP(20, time.Minute)).Post("/shared/{token}/copy", shh.copy)
 
 			// Sessions.
 			r.With(httprate.LimitByIP(30, time.Minute)).Post("/sessions", sh.create)

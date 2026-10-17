@@ -19,8 +19,14 @@ export const load: LayoutLoad = async ({ url }) => {
 		return { user };
 	} catch (e) {
 		if (e instanceof ApiError && e.status === 401) {
+			// Share links and the terms page work without an account.
+			if (isPublicPath(url.pathname)) return { user: null };
 			throw redirect(303, '/login');
 		}
 		throw e;
 	}
 };
+
+function isPublicPath(path: string): boolean {
+	return path.startsWith('/s/') || path === '/terms';
+}
