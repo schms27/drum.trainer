@@ -13,6 +13,7 @@
 	};
 
 	const errorCode = page.url.searchParams.get('error');
+	const next = page.url.searchParams.get('next');
 	const errorMessage = errorCode ? (errorMessages[errorCode] ?? 'Sign-in failed. Please try again.') : null;
 </script>
 
@@ -34,7 +35,7 @@
 
 		<div class="flex flex-col gap-3">
 			<a
-				href={loginUrl('google')}
+				href={loginUrl('google', next)}
 				class="flex items-center justify-center gap-3 bg-white hover:bg-zinc-100 text-zinc-900 border border-line font-medium rounded-lg px-4 py-3 transition"
 			>
 				<svg class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -59,7 +60,7 @@
 			</a>
 
 			<a
-				href={loginUrl('github')}
+				href={loginUrl('github', next)}
 				class="flex items-center justify-center gap-3 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-lg px-4 py-3 transition"
 			>
 				<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">

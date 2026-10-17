@@ -3,7 +3,7 @@
 	import '@fontsource/outfit/700.css';
 	import type { Snippet } from 'svelte';
 	import Header from '$lib/components/layout/Header.svelte';
-	import { navigating } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import type { LayoutData } from './$types';
 	import '$lib/theme.svelte';
 	import { focusMode } from '$lib/focus.svelte';
@@ -27,11 +27,32 @@
 			{@render children()}
 		</main>
 		{#if !focusMode.active}
-			<footer class="text-center text-fg-subtle text-xs py-4">Drum Trainer · version {appVersion}</footer>
+			<footer class="text-center text-fg-subtle text-xs py-4">
+				Drum Trainer · version {appVersion} · <a href="/terms" class="hover:text-fg hover:underline">Terms</a>
+			</footer>
 		{/if}
 	</div>
-{:else}
+{:else if page.url.pathname === '/login'}
 	{@render children()}
+{:else}
+	<!-- Signed-out shell for public pages (share links, terms). -->
+	<div class="min-h-screen bg-canvas text-fg flex flex-col">
+		<header class="border-b border-line">
+			<div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+				<a href="/login" class="flex items-center gap-2">
+					<img src="/logo.svg" alt="" width="28" height="28" />
+					<span class="font-brand text-lg font-bold tracking-tight">Drum Trainer</span>
+				</a>
+				<a href="/login?next={encodeURIComponent(page.url.pathname)}" class="text-sm font-medium text-accent-text hover:underline">Sign in</a>
+			</div>
+		</header>
+		<main class="max-w-5xl w-full mx-auto px-4 py-8 flex-1 flex flex-col gap-8">
+			{@render children()}
+		</main>
+		<footer class="text-center text-fg-subtle text-xs py-4">
+			Drum Trainer · <a href="/terms" class="hover:text-fg hover:underline">Terms</a>
+		</footer>
+	</div>
 {/if}
 
 <style>

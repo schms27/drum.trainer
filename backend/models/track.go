@@ -16,6 +16,11 @@ type Track struct {
 	TimeSigNumerator int       `json:"time_sig_numerator"` // beats per bar (e.g. 4 for 4/4, 3 for 3/4)
 	PracticeBPM      *float64  `json:"practice_bpm"`       // nil = use native BPM
 	CreatedAt        time.Time `json:"created_at"`
+	// Sharing. Only the owner ever receives a Track, so the token is safe here.
+	Visibility    string  `json:"visibility"`      // "private" | "unlisted"
+	ShareToken    *string `json:"share_token"`     // nil while private
+	RightsBasis   *string `json:"rights_basis"`    // owner's declaration when shared
+	SourceTrackID *int64  `json:"source_track_id"` // set on copies of a shared track
 	// Stats is only filled by endpoints that report practice progress.
 	Stats *TrackStats `json:"stats,omitempty"`
 }
@@ -44,4 +49,31 @@ type TrackWithNotes struct {
 type NoteMapping struct {
 	NoteNumber int    `json:"note_number"`
 	Instrument string `json:"instrument"`
+}
+
+// Visibility values for Track.Visibility.
+const (
+	VisibilityPrivate  = "private"
+	VisibilityUnlisted = "unlisted"
+)
+
+// Rights bases an owner can declare when sharing a track.
+var RightsBases = []string{"original", "licensed", "public_domain", "transcription"}
+
+// SharedTrack is the view of a shared track that anyone holding the link sees.
+// It deliberately carries no file names, owner identity or full note list.
+type SharedTrack struct {
+	Name             string         `json:"name"`
+	DurationMs       float64        `json:"duration_ms"`
+	NoteCount        int            `json:"note_count"`
+	BPM              float64        `json:"bpm"`
+	TimeSigNumerator int            `json:"time_sig_numerator"`
+	RightsBasis      string         `json:"rights_basis"`
+	SharedAt         time.Time      `json:"shared_at"`
+	Instruments      map[string]int `json:"instruments"`   // note count per instrument group
+	PreviewNotes     []NoteEvent    `json:"preview_notes"` // the opening bars only
+	PreviewMs        float64        `json:"preview_ms"`    // length the preview covers
+	// Viewer-specific; only filled when the viewer is signed in.
+	IsOwner       bool   `json:"is_owner"`
+	CopiedTrackID *int64 `json:"copied_track_id"` // the viewer's existing copy, if any
 }

@@ -73,8 +73,11 @@ func (s *Store) Open(name string) (*os.File, error) {
 }
 
 // Delete removes the stored file <name>. Safe to call if the file does not
-// exist.
+// exist, or with an empty name (tracks copied from a share have no file).
 func (s *Store) Delete(name string) error {
+	if name == "" {
+		return nil
+	}
 	path := s.path(name)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("delete file %q: %w", path, err)

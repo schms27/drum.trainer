@@ -49,13 +49,14 @@ func InsertTrack(db *DB, track *models.Track, notes []models.NoteEvent, userID i
 	}
 	track.ID = trackID
 	track.CreatedAt = ct.T
+	track.Visibility = models.VisibilityPrivate
 	return nil
 }
 
 // GetTrack returns a track by ID scoped to the given user.
 func GetTrack(db *DB, id, userID int64) (*models.Track, error) {
 	row := db.QueryRow(
-		db.Rebind(`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at
+		db.Rebind(`SELECT `+trackColumns+`
 		 FROM tracks WHERE id = ? AND user_id = ?`), id, userID,
 	)
 	return scanTrack(row)
@@ -86,7 +87,7 @@ func GetTrackNotes(db *DB, trackID int64) ([]models.NoteEvent, error) {
 // ListTracks returns all tracks for a user without notes, newest first.
 func ListTracks(db *DB, userID int64) ([]models.Track, error) {
 	rows, err := db.Query(
-		db.Rebind(`SELECT id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at
+		db.Rebind(`SELECT `+trackColumns+`
 		 FROM tracks WHERE user_id = ? ORDER BY id DESC`),
 		userID,
 	)
@@ -212,19 +213,35 @@ func SetPracticeBPM(db *DB, trackID, userID int64, bpm *float64) error {
 	return nil
 }
 
+// trackColumns is the column list scanTrack expects, in order.
+const trackColumns = `id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at,
+	visibility, share_token, rights_basis, source_track_id`
+
 func scanTrack(s scanner) (*models.Track, error) {
 	var t models.Track
 	var practiceBPM sql.NullFloat64
 	var ct scanTime
+	var shareToken, rightsBasis sql.NullString
+	var sourceID sql.NullInt64
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
 		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &ct,
+		&t.Visibility, &shareToken, &rightsBasis, &sourceID,
 	)
 	if err != nil {
 		return nil, err
 	}
 	if practiceBPM.Valid {
 		t.PracticeBPM = &practiceBPM.Float64
+	}
+	if shareToken.Valid {
+		t.ShareToken = &shareToken.String
+	}
+	if rightsBasis.Valid {
+		t.RightsBasis = &rightsBasis.String
+	}
+	if sourceID.Valid {
+		t.SourceTrackID = &sourceID.Int64
 	}
 	t.CreatedAt = ct.T
 	return &t, nil
