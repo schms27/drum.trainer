@@ -163,13 +163,15 @@
 		{:else if !track.disabled}
 			<Card
 				title="Sharing"
-				description={track.share_token
-					? 'Shared by link. Anyone with the link can add a copy to their library.'
-					: 'Private. Create a link to let other drummers practise this track.'}
+				description={track.visibility === 'public'
+					? 'Public. Listed in Explore, so any drummer can find it and add a copy.'
+					: track.share_token
+						? 'Shared by link. Anyone with the link can add a copy to their library.'
+						: 'Private. Share it by link or list it in Explore so other drummers can practise it.'}
 			>
 				<Button variant="secondary" onclick={() => (shareOpen = true)}>
 					<Share2 size={16} aria-hidden="true" />
-					{track.share_token ? 'Manage link' : 'Share by link'}
+					{track.share_token ? 'Manage sharing' : 'Share'}
 				</Button>
 			</Card>
 		{/if}

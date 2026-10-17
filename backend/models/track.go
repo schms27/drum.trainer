@@ -60,10 +60,28 @@ type NoteMapping struct {
 const (
 	VisibilityPrivate  = "private"
 	VisibilityUnlisted = "unlisted"
+	VisibilityPublic   = "public" // shared by link and listed in Explore
 )
 
 // Rights bases an owner can declare when sharing a track.
 var RightsBases = []string{"original", "licensed", "public_domain", "transcription"}
+
+// ListableRightsBases are the rights bases a track needs to be listed
+// publicly. Transcriptions of other people's songs can only be shared by link.
+var ListableRightsBases = []string{"original", "licensed", "public_domain"}
+
+// PublicTrack is a track as the Explore gallery lists it.
+type PublicTrack struct {
+	ShareToken       string    `json:"share_token"`
+	Name             string    `json:"name"`
+	DurationMs       float64   `json:"duration_ms"`
+	NoteCount        int       `json:"note_count"`
+	BPM              float64   `json:"bpm"`
+	TimeSigNumerator int       `json:"time_sig_numerator"`
+	RightsBasis      string    `json:"rights_basis"`
+	ListedAt         time.Time `json:"listed_at"`
+	Copies           int       `json:"copies"` // how many people added it to their library
+}
 
 // SharedTrack is the view of a shared track that anyone holding the link sees.
 // It deliberately carries no file names, owner identity or full note list.
@@ -74,6 +92,7 @@ type SharedTrack struct {
 	BPM              float64        `json:"bpm"`
 	TimeSigNumerator int            `json:"time_sig_numerator"`
 	RightsBasis      string         `json:"rights_basis"`
+	Visibility       string         `json:"visibility"` // "unlisted" | "public"
 	SharedAt         time.Time      `json:"shared_at"`
 	Instruments      map[string]int `json:"instruments"`   // note count per instrument group
 	PreviewNotes     []NoteEvent    `json:"preview_notes"` // the opening bars only

@@ -51,12 +51,13 @@
 
 <svelte:head>
 	<title>{shared.name} — Drum Trainer</title>
-	<meta name="robots" content="noindex, nofollow" />
+	{#if shared.visibility !== 'public'}<meta name="robots" content="noindex, nofollow" />{/if}
 </svelte:head>
 
 <PageHeader
 	title={shared.name}
-	subtitle="Shared drum track · {formatDuration(shared.duration_ms)} · {Math.round(shared.bpm)} BPM · {shared.note_count} notes"
+	subtitle="{shared.visibility === 'public' ? 'Public' : 'Shared'} drum track · {formatDuration(shared.duration_ms)} · {Math.round(shared.bpm)} BPM · {shared.note_count} notes"
+	back={shared.visibility === 'public' ? { href: '/explore', label: 'Explore' } : undefined}
 >
 	{#snippet actions()}
 		{#if shared.is_owner}

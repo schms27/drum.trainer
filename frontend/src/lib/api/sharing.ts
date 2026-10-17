@@ -1,15 +1,20 @@
-import type { RightsBasis, SharedTrack } from '$lib/types/track';
+import type { PublicTrack, RightsBasis, SharedTrack, SharedVisibility } from '$lib/types/track';
 import { apiFetch } from './client';
 
 export interface ShareState {
-	visibility: 'unlisted';
+	visibility: SharedVisibility;
 	share_token: string;
 }
 
-export async function shareTrack(trackId: number, rightsBasis: RightsBasis): Promise<ShareState> {
+/** Shares a track (or changes how it's shared); the caller has shown and checked the attestation. */
+export async function shareTrack(
+	trackId: number,
+	rightsBasis: RightsBasis,
+	visibility: SharedVisibility
+): Promise<ShareState> {
 	return apiFetch<ShareState>(`/tracks/${trackId}/sharing`, {
 		method: 'PUT',
-		body: JSON.stringify({ rights_basis: rightsBasis, accept_terms: true })
+		body: JSON.stringify({ visibility, rights_basis: rightsBasis, accept_terms: true })
 	});
 }
 
@@ -44,3 +49,20 @@ export const RIGHTS_LABELS: Record<RightsBasis, string> = {
 	public_domain: 'The music is in the public domain',
 	transcription: 'It is my transcription of someone else’s song'
 };
+
+/** Rights bases that allow listing a track in Explore. Mirrors models.ListableRightsBases. */
+export const LISTABLE_RIGHTS: readonly RightsBasis[] = ['original', 'licensed', 'public_domain'];
+
+export type ExploreSort = 'newest' | 'popular';
+
+export interface ExplorePage {
+	tracks: PublicTrack[];
+	page: number;
+	has_more: boolean;
+}
+
+export async function getExplore(query: string, sort: ExploreSort, page: number): Promise<ExplorePage> {
+	const params = new URLSearchParams({ sort, page: String(page) });
+	if (query) params.set('q', query);
+	return apiFetch<ExplorePage>(`/explore?${params}`);
+}

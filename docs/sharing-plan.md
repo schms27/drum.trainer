@@ -264,7 +264,11 @@ disable with no counter-notice wait. Leave it out of v1.
    `GET /api/v1/site`. Owners aren't emailed yet: they see the reason on the
    track page, and takedowns are logged.
 3. **Public Explore:** `public` visibility, gallery with search, the
-   no-transcriptions-public rule, badges.
+   no-transcriptions-public rule, badges. *Done:* `/explore` (no account needed) with name
+   search and newest / most-added sorting; `listed_at` (migration 013) orders newly listed
+   tracks first. The share dialog edits rights basis and visibility together, and every
+   change is a fresh, logged attestation. Explore shows no owner identities, no artist or
+   song pages and no editorial picks. Only public share pages may be indexed.
 4. **Later:** owner notifications by email, OG previews for `/s/*`, optional audio
    sharing as described above, "update my copy" when the original changes.
 

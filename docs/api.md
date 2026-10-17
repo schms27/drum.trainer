@@ -121,12 +121,15 @@ Tracks can be shared through an unlisted link. Every track object carries `visib
 
 ### PUT /api/v1/tracks/:id/sharing
 
-Share a track by link, or update the rights declaration of an already-shared track (the token
-is kept). Records an entry in `track_share_events` with the current terms version.
+Share a track, or change how an already-shared track is shared (the token is kept). Each call
+is a new attestation, recorded in `track_share_events` with the current terms version.
 
-**Request:** `{ "rights_basis": "original" | "licensed" | "public_domain" | "transcription", "accept_terms": true }`
+**Request:** `{ "visibility": "unlisted" | "public", "rights_basis": "original" | "licensed" | "public_domain" | "transcription", "accept_terms": true }`
 
-**Response `200 OK`:** `{ "visibility": "unlisted", "share_token": "…", "rights_basis": "original" }`
+`visibility` defaults to `"unlisted"` (only people with the link). `"public"` also lists the track
+in Explore and is refused (`400`) for `transcription`.
+
+**Response `200 OK`:** `{ "visibility": "public", "share_token": "…", "rights_basis": "original" }`
 
 **Error responses:**
 - `400 Bad Request` — invalid `rights_basis`, or `accept_terms` is not `true`
@@ -144,7 +147,8 @@ Make the track private and clear its token. Existing copies are kept. **Response
 ### GET /api/v1/shared/:token
 
 **No session required.** Metadata and the opening four bars of a shared track; the full note
-list is never returned here. Sent with `X-Robots-Tag: noindex, nofollow`.
+list is never returned here. Unlisted tracks are sent with `X-Robots-Tag: noindex, nofollow`;
+public ones may be indexed.
 
 **Response `200 OK`:**
 ```json
@@ -161,6 +165,24 @@ list is never returned here. Sent with `X-Robots-Tag: noindex, nofollow`.
 `is_owner` and `copied_track_id` are only filled when the request carries a valid session.
 
 **Error responses:** `404 Not Found` — unknown token, reset link, or track no longer shared.
+
+### GET /api/v1/explore?q=&sort=newest|popular&page=1
+
+**No session required.** One page (24 tracks) of public tracks that moderation hasn't removed.
+`q` searches names (case-insensitive, up to 100 characters); `popular` sorts by how many people
+added the track. Rate-limited to 60 per minute per IP.
+
+**Response `200 OK`:**
+```json
+{
+  "tracks": [
+    { "share_token": "…", "name": "Funk Groove", "duration_ms": 8000, "note_count": 48, "bpm": 120,
+      "time_sig_numerator": 4, "rights_basis": "original", "listed_at": "2026-10-17T15:40:54Z", "copies": 3 }
+  ],
+  "page": 1,
+  "has_more": false
+}
+```
 
 ### POST /api/v1/shared/:token/copy
 

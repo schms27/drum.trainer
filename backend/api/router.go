@@ -48,6 +48,7 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 	shh := &sharingHandler{db: db, secret: cfg.SessionSecret}
 	rh := &reportsHandler{db: db, secret: cfg.SessionSecret}
 	adh := &adminHandler{db: db}
+	eh := &exploreHandler{db: db}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
@@ -61,6 +62,9 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 
 		// Shared track landing page — public, the link token is the credential.
 		r.With(httprate.LimitByIP(60, time.Minute)).Get("/shared/{token}", shh.get)
+
+		// Explore gallery of public tracks — public.
+		r.With(httprate.LimitByIP(60, time.Minute)).Get("/explore", eh.list)
 
 		// Copyright / abuse reports — public so rights holders need no account.
 		r.With(httprate.LimitByIP(5, time.Hour)).Post("/reports", rh.create)
