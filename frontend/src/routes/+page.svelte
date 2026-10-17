@@ -5,6 +5,7 @@
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import SetupChecklist from '$lib/components/onboarding/SetupChecklist.svelte';
 	import type { Track, TrackWithNotes } from '$lib/types/track';
 	import type { PageData } from './$types';
 
@@ -40,9 +41,15 @@
 		</li>
 	</ol>
 
-	<Card title="Add your first track">
-		<MidiUpload onUploaded={handleUploaded} />
-	</Card>
+	<div class="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+		<Card title="Check your setup" description="Recording needs a few things from your browser and kit.">
+			<SetupChecklist />
+		</Card>
+
+		<Card title="Add your first track">
+			<MidiUpload onUploaded={handleUploaded} />
+		</Card>
+	</div>
 {:else}
 	<PageHeader title="Library" subtitle="{tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}">
 		{#snippet actions()}
