@@ -19,14 +19,16 @@ type sharingEnv struct {
 	t       *testing.T
 	router  http.Handler
 	trackID int64
+	ip      string // client address sent as X-Real-IP, when set
 }
 
-// newSharingEnv starts a router on a fresh database with two signed-in users
-// ("owner" and "other") and one 8-bar track owned by "owner".
+// newSharingEnv starts a router on a fresh database with three signed-in
+// users ("owner", "other" and "admin", the only one in ADMIN_EMAILS) and one
+// 8-bar track owned by "owner".
 func newSharingEnv(t *testing.T) *sharingEnv {
 	t.Helper()
 	dir := t.TempDir()
-	cfg := config.Config{DBPath: filepath.Join(dir, "test.db"), SessionSecret: "test"}
+	cfg := config.Config{DBPath: filepath.Join(dir, "test.db"), SessionSecret: "test", AdminEmails: []string{"admin@example.com"}}
 	db, err := dbpkg.Open(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +40,7 @@ func newSharingEnv(t *testing.T) *sharingEnv {
 	}
 
 	var trackID int64
-	for _, name := range []string{"owner", "other"} {
+	for _, name := range []string{"owner", "other", "admin"} {
 		u, err := dbpkg.UpsertUser(db, "github", name, name+"@example.com", name, "")
 		if err != nil {
 			t.Fatal(err)
@@ -73,6 +75,9 @@ func (e *sharingEnv) do(method, path, user string, body any, out any) int {
 		json.NewEncoder(&buf).Encode(body)
 	}
 	req := httptest.NewRequest(method, path, &buf)
+	if e.ip != "" {
+		req.Header.Set("X-Real-IP", e.ip)
+	}
 	if user != "" {
 		req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: user})
 	}

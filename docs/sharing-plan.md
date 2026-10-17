@@ -254,6 +254,15 @@ disable with no counter-notice wait. Leave it out of v1.
    return to the share page.
 2. **Moderation baseline:** report form, `/copyright` page, admin role and queue,
    disable/restore with lineage propagation, strikes. **Must ship before phase 3.**
+   *Done*, with these differences from the design above: admins come from
+   `ADMIN_EMAILS` on every request (no `is_admin` column, so removal takes effect
+   at once); copies carry `origin_track_id` (no foreign key, never cleared) so a
+   takedown still reaches them after the uploader deletes the original; removed
+   tracks' note fingerprints go into `blocked_fingerprints` (basic stay-down);
+   `track_reports` snapshots the track name and owner so reports outlive the
+   track; the contact address for notices is `CONTACT_EMAIL`, served at
+   `GET /api/v1/site`. Owners aren't emailed yet: they see the reason on the
+   track page, and takedowns are logged.
 3. **Public Explore:** `public` visibility, gallery with search, the
    no-transcriptions-public rule, badges.
 4. **Later:** owner notifications by email, OG previews for `/s/*`, optional audio

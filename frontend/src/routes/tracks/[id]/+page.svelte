@@ -7,6 +7,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import Notice from '$lib/components/ui/Notice.svelte';
 	import BackingTracks from '$lib/components/tracks/BackingTracks.svelte';
 	import ShareDialog from '$lib/components/tracks/ShareDialog.svelte';
 	import AccuracyChart from '$lib/components/charts/AccuracyChart.svelte';
@@ -58,11 +59,27 @@
 	back={{ href: '/', label: 'Library' }}
 >
 	{#snippet actions()}
-		<Button href="/session/{track.id}" variant="primary" size="lg">
-			<Play size={18} aria-hidden="true" /> Practice
-		</Button>
+		{#if !track.disabled}
+			<Button href="/session/{track.id}" variant="primary" size="lg">
+				<Play size={18} aria-hidden="true" /> Practice
+			</Button>
+		{/if}
 	{/snippet}
 </PageHeader>
+
+{#if track.disabled}
+	<Notice variant="error">
+		<p class="font-medium">
+			{track.copied ? 'The track this was copied from was removed' : 'This track was removed'}, so it can’t be practised or
+			shared any more.
+		</p>
+		{#if track.disabled_reason}<p class="mt-1">Reason: {track.disabled_reason}</p>{/if}
+		<p class="mt-1 text-fg-muted">
+			Your takes are kept. See our <a href="/copyright" class="text-accent-text hover:underline">copyright policy</a> if you
+			think this is a mistake.
+		</p>
+	</Notice>
+{/if}
 
 {#if stats && stats.sessions > 0}
 	<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -120,7 +137,9 @@
 {:else}
 	<EmptyState title="No takes yet" description="Record your first take — your progress on this track will show up here.">
 		{#snippet action()}
-			<Button href="/session/{track.id}" variant="primary"><Play size={16} aria-hidden="true" /> Practice now</Button>
+			{#if !track.disabled}
+				<Button href="/session/{track.id}" variant="primary"><Play size={16} aria-hidden="true" /> Practice now</Button>
+			{/if}
 		{/snippet}
 	</EmptyState>
 {/if}
@@ -137,11 +156,11 @@
 			</Button>
 		</Card>
 
-		{#if track.source_track_id !== null}
+		{#if track.copied}
 			<Card title="Sharing" description="You added this track from someone’s share link, so it can’t be shared further.">
 				<p class="text-sm text-fg-muted">It’s your own copy: changes you make don’t affect the original.</p>
 			</Card>
-		{:else}
+		{:else if !track.disabled}
 			<Card
 				title="Sharing"
 				description={track.share_token

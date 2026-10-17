@@ -149,10 +149,14 @@ func (h *tracksHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	notes, err := dbpkg.GetTrackNotes(h.db, id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to fetch notes")
-		return
+	notes := []models.NoteEvent{}
+	// A track removed by moderation keeps its page and history, not its notes.
+	if !track.Disabled {
+		notes, err = dbpkg.GetTrackNotes(h.db, id)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to fetch notes")
+			return
+		}
 	}
 
 	stats, err := dbpkg.ListTrackStats(h.db, user.ID)

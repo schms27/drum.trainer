@@ -52,10 +52,14 @@ func (h *sharingHandler) share(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := UserFromContext(r.Context())
+	if user.SharingBanned {
+		writeError(w, http.StatusForbidden, "sharing is turned off for your account after repeated copyright reports")
+		return
+	}
 	token, err := dbpkg.ShareTrack(h.db, id, user.ID, dbpkg.ShareEvent{
 		RightsBasis: body.RightsBasis,
 		TermsVer:    TermsVersion,
-		IPHash:      h.ipHash(r),
+		IPHash:      ipHash(h.secret, r),
 	})
 	if err != nil {
 		writeShareError(w, err)
@@ -76,7 +80,7 @@ func (h *sharingHandler) rotate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := UserFromContext(r.Context())
-	token, err := dbpkg.RotateShareToken(h.db, id, user.ID, dbpkg.ShareEvent{TermsVer: TermsVersion, IPHash: h.ipHash(r)})
+	token, err := dbpkg.RotateShareToken(h.db, id, user.ID, dbpkg.ShareEvent{TermsVer: TermsVersion, IPHash: ipHash(h.secret, r)})
 	if err != nil {
 		writeShareError(w, err)
 		return
@@ -92,7 +96,7 @@ func (h *sharingHandler) unshare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := UserFromContext(r.Context())
-	if err := dbpkg.UnshareTrack(h.db, id, user.ID, dbpkg.ShareEvent{IPHash: h.ipHash(r)}); err != nil {
+	if err := dbpkg.UnshareTrack(h.db, id, user.ID, dbpkg.ShareEvent{IPHash: ipHash(h.secret, r)}); err != nil {
 		writeShareError(w, err)
 		return
 	}
@@ -103,7 +107,8 @@ func writeShareError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		writeError(w, http.StatusNotFound, "track not found")
-	case errors.Is(err, dbpkg.ErrCopyNotShareable), errors.Is(err, dbpkg.ErrNotShared):
+	case errors.Is(err, dbpkg.ErrCopyNotShareable), errors.Is(err, dbpkg.ErrNotShared),
+		errors.Is(err, dbpkg.ErrTrackDisabled), errors.Is(err, dbpkg.ErrBlockedContent):
 		writeError(w, http.StatusConflict, err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "failed to update sharing")
@@ -221,14 +226,14 @@ func optionalUser(db *dbpkg.DB, r *http.Request) *models.User {
 	return user
 }
 
-// ipHash returns a keyed hash of the client IP for the share audit log, so the
-// log can link actions from one address without storing the address itself.
-func (h *sharingHandler) ipHash(r *http.Request) string {
+// ipHash returns a keyed hash of the client IP for audit logs, so they can
+// link actions from one address without storing the address itself.
+func ipHash(secret string, r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
 	}
-	mac := hmac.New(sha256.New, []byte(h.secret))
+	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(host))
 	return hex.EncodeToString(mac.Sum(nil))[:32]
 }

@@ -20,7 +20,12 @@ type Track struct {
 	Visibility    string  `json:"visibility"`      // "private" | "unlisted"
 	ShareToken    *string `json:"share_token"`     // nil while private
 	RightsBasis   *string `json:"rights_basis"`    // owner's declaration when shared
-	SourceTrackID *int64  `json:"source_track_id"` // set on copies of a shared track
+	SourceTrackID *int64  `json:"source_track_id"` // set on copies of a shared track, cleared if the original is deleted
+	Copied        bool    `json:"copied"`          // true for every copy, even once the original is gone
+	// Disabled is set when moderation removed the track (or the track it was
+	// copied from). It stays in the library, but can no longer be practised.
+	Disabled       bool    `json:"disabled"`
+	DisabledReason *string `json:"disabled_reason"`
 	// Stats is only filled by endpoints that report practice progress.
 	Stats *TrackStats `json:"stats,omitempty"`
 }

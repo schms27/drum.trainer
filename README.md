@@ -72,6 +72,11 @@ GITHUB_CLIENT_SECRET=
 # Set to true only for local HTTP development (disables Secure cookie flag)
 DEV_MODE=false
 
+# Moderation of shared tracks: who may review reports, and the address
+# published for copyright notices
+ADMIN_EMAILS=you@example.com
+CONTACT_EMAIL=copyright@example.com
+
 # Host path where persistent data (uploads, postgres) will be stored
 CONTAINER_MOUNTS_PATH=/opt/docker-data
 ```
@@ -115,6 +120,8 @@ Point your external reverse proxy at port `9980`. The app will be available at t
 | `MAX_PILOT_SIZE_MB` | No | `150` | Maximum backing track (audio) upload size in MB. |
 | `MAX_SESSION_HITS` | No | `20000` | Maximum number of recorded hits accepted per session submission. |
 | `DEV_MODE` | No | `false` | Set to `true` for local HTTP development. Disables the `Secure` flag on session cookies. |
+| `ADMIN_EMAILS` | No | — | Comma-separated emails of users who can review reports and remove shared tracks at `/admin/reports`. Matched against the email from the OAuth provider. |
+| `CONTACT_EMAIL` | Recommended | — | Address for copyright notices, published on `/terms` and `/copyright`. Set it before enabling sharing in production. |
 
 ### Frontend
 

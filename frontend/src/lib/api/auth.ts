@@ -6,6 +6,9 @@ export type AuthUser = {
 	email: string;
 	name: string;
 	avatar_url: string;
+	/** Lost the right to share after repeated upheld copyright reports. */
+	sharing_banned: boolean;
+	is_admin: boolean;
 };
 
 export async function fetchCurrentUser(): Promise<AuthUser> {

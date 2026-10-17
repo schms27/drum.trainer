@@ -23,6 +23,12 @@ export interface Track {
 	rights_basis: RightsBasis | null;
 	/** Set when this track is a copy of someone else's shared track. */
 	source_track_id: number | null;
+	/** True for every copy of someone else's track, even after the original is deleted. */
+	copied: boolean;
+	/** Removed by moderation (or copied from a removed track): no notes, no practice. */
+	disabled: boolean;
+	/** Why it was removed, as written by the moderator. */
+	disabled_reason: string | null;
 	/** Practice progress on this track (list and detail endpoints). */
 	stats?: TrackStats;
 }

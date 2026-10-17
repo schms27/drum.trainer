@@ -215,18 +215,18 @@ func SetPracticeBPM(db *DB, trackID, userID int64, bpm *float64) error {
 
 // trackColumns is the column list scanTrack expects, in order.
 const trackColumns = `id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at,
-	visibility, share_token, rights_basis, source_track_id`
+	visibility, share_token, rights_basis, source_track_id, origin_track_id IS NOT NULL, disabled_at IS NOT NULL, disabled_reason`
 
 func scanTrack(s scanner) (*models.Track, error) {
 	var t models.Track
 	var practiceBPM sql.NullFloat64
 	var ct scanTime
-	var shareToken, rightsBasis sql.NullString
+	var shareToken, rightsBasis, disabledReason sql.NullString
 	var sourceID sql.NullInt64
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
 		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &ct,
-		&t.Visibility, &shareToken, &rightsBasis, &sourceID,
+		&t.Visibility, &shareToken, &rightsBasis, &sourceID, &t.Copied, &t.Disabled, &disabledReason,
 	)
 	if err != nil {
 		return nil, err
@@ -242,6 +242,9 @@ func scanTrack(s scanner) (*models.Track, error) {
 	}
 	if sourceID.Valid {
 		t.SourceTrackID = &sourceID.Int64
+	}
+	if disabledReason.Valid {
+		t.DisabledReason = &disabledReason.String
 	}
 	t.CreatedAt = ct.T
 	return &t, nil

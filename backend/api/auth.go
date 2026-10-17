@@ -169,5 +169,6 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	user.IsAdmin = h.cfg.IsAdmin(user.Email)
 	writeJSON(w, http.StatusOK, user)
 }
