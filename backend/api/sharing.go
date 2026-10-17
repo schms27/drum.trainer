@@ -35,6 +35,7 @@ func (h *sharingHandler) share(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
+		Visibility  string `json:"visibility"` // "unlisted" (default) or "public"
 		RightsBasis string `json:"rights_basis"`
 		AcceptTerms bool   `json:"accept_terms"`
 	}
@@ -44,6 +45,13 @@ func (h *sharingHandler) share(w http.ResponseWriter, r *http.Request) {
 	}
 	if !slices.Contains(models.RightsBases, body.RightsBasis) {
 		writeError(w, http.StatusBadRequest, "rights_basis must be one of original, licensed, public_domain, transcription")
+		return
+	}
+	if body.Visibility == "" {
+		body.Visibility = models.VisibilityUnlisted
+	}
+	if body.Visibility != models.VisibilityUnlisted && body.Visibility != models.VisibilityPublic {
+		writeError(w, http.StatusBadRequest, "visibility must be unlisted or public")
 		return
 	}
 	if !body.AcceptTerms {
@@ -57,6 +65,7 @@ func (h *sharingHandler) share(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token, err := dbpkg.ShareTrack(h.db, id, user.ID, dbpkg.ShareEvent{
+		Visibility:  body.Visibility,
 		RightsBasis: body.RightsBasis,
 		TermsVer:    TermsVersion,
 		IPHash:      ipHash(h.secret, r),
@@ -66,7 +75,7 @@ func (h *sharingHandler) share(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"visibility":   models.VisibilityUnlisted,
+		"visibility":   body.Visibility,
 		"share_token":  token,
 		"rights_basis": body.RightsBasis,
 	})
@@ -85,7 +94,12 @@ func (h *sharingHandler) rotate(w http.ResponseWriter, r *http.Request) {
 		writeShareError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"visibility": models.VisibilityUnlisted, "share_token": token})
+	track, err := dbpkg.GetTrack(h.db, id, user.ID)
+	if err != nil {
+		writeShareError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"visibility": track.Visibility, "share_token": token})
 }
 
 // DELETE /api/v1/tracks/{id}/sharing
@@ -107,6 +121,8 @@ func writeShareError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		writeError(w, http.StatusNotFound, "track not found")
+	case errors.Is(err, dbpkg.ErrNotListable):
+		writeError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, dbpkg.ErrCopyNotShareable), errors.Is(err, dbpkg.ErrNotShared),
 		errors.Is(err, dbpkg.ErrTrackDisabled), errors.Is(err, dbpkg.ErrBlockedContent):
 		writeError(w, http.StatusConflict, err.Error())
@@ -120,13 +136,17 @@ func writeShareError(w http.ResponseWriter, err error) {
 // Returns metadata and the opening bars only; the full note list is only
 // available by copying the track into a signed-in user's library.
 func (h *sharingHandler) get(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 	w.Header().Set("Cache-Control", "private, no-store")
 
 	track, ref, err := dbpkg.GetSharedTrack(h.db, chi.URLParam(r, "token"))
 	if err != nil {
+		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 		writeSharedLookupError(w, err)
 		return
+	}
+	// Only public tracks may be indexed; unlisted links stay out of search engines.
+	if track.Visibility != models.VisibilityPublic {
+		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 	}
 	notes, err := dbpkg.GetTrackNotes(h.db, track.ID)
 	if err != nil {
@@ -145,6 +165,7 @@ func (h *sharingHandler) get(w http.ResponseWriter, r *http.Request) {
 		NoteCount:        track.NoteCount,
 		BPM:              track.BPM,
 		TimeSigNumerator: track.TimeSigNumerator,
+		Visibility:       track.Visibility,
 		SharedAt:         ref.SharedAt.T,
 		Instruments:      map[string]int{},
 		PreviewNotes:     []models.NoteEvent{},

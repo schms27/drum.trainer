@@ -51,7 +51,10 @@ export interface NoteMapping {
 	instrument: string;
 }
 
-export type Visibility = 'private' | 'unlisted';
+export type Visibility = 'private' | SharedVisibility;
+
+/** 'unlisted': only people with the link; 'public': also listed in Explore. */
+export type SharedVisibility = 'unlisted' | 'public';
 
 export type RightsBasis = 'original' | 'licensed' | 'public_domain' | 'transcription';
 
@@ -63,6 +66,7 @@ export interface SharedTrack {
 	bpm: number;
 	time_sig_numerator: number;
 	rights_basis: RightsBasis;
+	visibility: SharedVisibility;
 	shared_at: string;
 	/** Note count per instrument group. */
 	instruments: Record<string, number>;
@@ -72,4 +76,18 @@ export interface SharedTrack {
 	is_owner: boolean;
 	/** The viewer's existing copy, if they already added it. */
 	copied_track_id: number | null;
+}
+
+/** A track in the Explore gallery. */
+export interface PublicTrack {
+	share_token: string;
+	name: string;
+	duration_ms: number;
+	note_count: number;
+	bpm: number;
+	time_sig_numerator: number;
+	rights_basis: RightsBasis;
+	listed_at: string;
+	/** How many people added it to their library. */
+	copies: number;
 }

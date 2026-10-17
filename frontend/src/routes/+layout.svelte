@@ -43,7 +43,10 @@
 					<img src="/logo.svg" alt="" width="28" height="28" />
 					<span class="font-brand text-lg font-bold tracking-tight">Drum Trainer</span>
 				</a>
-				<a href="/login?next={encodeURIComponent(page.url.pathname)}" class="text-sm font-medium text-accent-text hover:underline">Sign in</a>
+				<div class="flex items-center gap-5">
+					<a href="/explore" class="text-sm text-fg-muted hover:text-fg">Explore</a>
+					<a href="/login?next={encodeURIComponent(page.url.pathname + page.url.search)}" class="text-sm font-medium text-accent-text hover:underline">Sign in</a>
+				</div>
 			</div>
 		</header>
 		<main class="max-w-5xl w-full mx-auto px-4 py-8 flex-1 flex flex-col gap-8">

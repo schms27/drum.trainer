@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/simu/drum-trainer/backend/models"
 )
@@ -18,6 +19,10 @@ var ErrCopyNotShareable = errors.New("copies of shared tracks cannot be shared")
 // ErrNotShared is returned when rotating the link of a track that is private.
 var ErrNotShared = errors.New("track is not shared")
 
+// ErrNotListable is returned when making a transcription public: those can
+// only be shared by link.
+var ErrNotListable = errors.New("transcriptions of other people's songs can be shared by link, but not listed publicly")
+
 // ErrTrackDisabled is returned when sharing a track that moderation removed.
 var ErrTrackDisabled = errors.New("this track was removed after a report and can't be shared")
 
@@ -28,6 +33,7 @@ var ErrBlockedContent = errors.New("this track matches one that was removed afte
 // ShareEvent records who changed a track's sharing, and what they attested to.
 type ShareEvent struct {
 	Action      string // "share" | "rotate" | "unshare"
+	Visibility  string // for "share": models.VisibilityUnlisted (default) or VisibilityPublic
 	RightsBasis string
 	TermsVer    string
 	IPHash      string
@@ -42,10 +48,20 @@ func newShareToken() string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-// ShareTrack makes a track reachable through an unlisted link and returns the
-// link token. An already-shared track keeps its token; only the rights
-// declaration is updated.
+// ShareTrack makes a track reachable through a link, unlisted or also listed
+// in Explore (ev.Visibility), and returns the link token. An already-shared
+// track keeps its token; only the visibility and rights declaration change.
 func ShareTrack(db *DB, trackID, userID int64, ev ShareEvent) (string, error) {
+	if ev.Visibility == "" {
+		ev.Visibility = models.VisibilityUnlisted
+	}
+	if ev.Visibility != models.VisibilityUnlisted && ev.Visibility != models.VisibilityPublic {
+		return "", fmt.Errorf("invalid visibility %q", ev.Visibility)
+	}
+	if ev.Visibility == models.VisibilityPublic && !slices.Contains(models.ListableRightsBases, ev.RightsBasis) {
+		return "", ErrNotListable
+	}
+
 	// Fingerprint before the transaction: SQLite runs with a single connection.
 	fp, err := TrackFingerprint(db, trackID)
 	if err != nil {
@@ -85,17 +101,20 @@ func ShareTrack(db *DB, trackID, userID int64, ev ShareEvent) (string, error) {
 	if !token.Valid {
 		t = newShareToken()
 	}
+	// listed_at moves only when the track newly becomes public, and is cleared
+	// when it stops being public.
 	_, err = tx.Exec(db.Rebind(`UPDATE tracks
-		SET visibility = ?, share_token = ?, rights_basis = ?, rights_terms_ver = ?,
+		SET listed_at = CASE WHEN ? = 'public' THEN COALESCE(listed_at, CURRENT_TIMESTAMP) END,
+		    visibility = ?, share_token = ?, rights_basis = ?, rights_terms_ver = ?,
 		    shared_at = COALESCE(shared_at, CURRENT_TIMESTAMP)
 		WHERE id = ?`),
-		models.VisibilityUnlisted, t, ev.RightsBasis, ev.TermsVer, trackID,
+		ev.Visibility, ev.Visibility, t, ev.RightsBasis, ev.TermsVer, trackID,
 	)
 	if err != nil {
 		return "", fmt.Errorf("share track: %w", err)
 	}
 	ev.Action = "share"
-	if err := insertShareEvent(db, tx, trackID, userID, models.VisibilityUnlisted, ev); err != nil {
+	if err := insertShareEvent(db, tx, trackID, userID, ev.Visibility, ev); err != nil {
 		return "", err
 	}
 	return t, tx.Commit()
@@ -143,7 +162,7 @@ func UnshareTrack(db *DB, trackID, userID int64, ev ShareEvent) error {
 	defer tx.Rollback()
 
 	res, err := tx.Exec(db.Rebind(`UPDATE tracks
-		SET visibility = ?, share_token = NULL, shared_at = NULL
+		SET visibility = ?, share_token = NULL, shared_at = NULL, listed_at = NULL
 		WHERE id = ? AND user_id = ?`),
 		models.VisibilityPrivate, trackID, userID,
 	)

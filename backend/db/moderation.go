@@ -218,7 +218,7 @@ func DisableTrackLineage(db *DB, trackID int64, reason string, strike bool) (*Mo
 	}
 	res, err := tx.Exec(db.Rebind(`UPDATE tracks
 		SET disabled_at = COALESCE(disabled_at, CURRENT_TIMESTAMP), disabled_reason = ?,
-		    visibility = ?, share_token = NULL, shared_at = NULL
+		    visibility = ?, share_token = NULL, shared_at = NULL, listed_at = NULL
 		WHERE id = ? OR origin_track_id = ?`),
 		reason, models.VisibilityPrivate, trackID, trackID,
 	)
@@ -313,7 +313,7 @@ func applyStrikeLimit(db *DB, tx *sql.Tx, userID int64, result *ModerationResult
 		if _, err := tx.Exec(db.Rebind(`UPDATE users SET sharing_banned_at = CURRENT_TIMESTAMP WHERE id = ?`), userID); err != nil {
 			return fmt.Errorf("ban user: %w", err)
 		}
-		if _, err := tx.Exec(db.Rebind(`UPDATE tracks SET visibility = ?, share_token = NULL, shared_at = NULL WHERE user_id = ?`),
+		if _, err := tx.Exec(db.Rebind(`UPDATE tracks SET visibility = ?, share_token = NULL, shared_at = NULL, listed_at = NULL WHERE user_id = ?`),
 			models.VisibilityPrivate, userID); err != nil {
 			return fmt.Errorf("unshare banned user's tracks: %w", err)
 		}

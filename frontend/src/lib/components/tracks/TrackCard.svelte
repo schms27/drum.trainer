@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Clock, Gauge, Link2, Play } from '@lucide/svelte';
+	import { Clock, Gauge, Globe, Link2, Play } from '@lucide/svelte';
 	import type { Track } from '$lib/types/track';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Sparkline from '$lib/components/charts/Sparkline.svelte';
@@ -29,6 +29,8 @@
 			<span>{track.note_count} notes</span>
 			{#if track.disabled}
 				<span class="text-bad font-medium">Removed</span>
+			{:else if track.visibility === 'public'}
+				<span class="inline-flex items-center gap-1 text-accent-text"><Globe size={13} aria-hidden="true" />Public</span>
 			{:else if track.share_token}
 				<span class="inline-flex items-center gap-1 text-accent-text"><Link2 size={13} aria-hidden="true" />Shared</span>
 			{:else if track.copied}

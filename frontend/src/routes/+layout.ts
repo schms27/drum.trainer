@@ -28,5 +28,5 @@ export const load: LayoutLoad = async ({ url }) => {
 };
 
 function isPublicPath(path: string): boolean {
-	return path.startsWith('/s/') || ['/terms', '/copyright', '/report'].includes(path);
+	return path.startsWith('/s/') || ['/explore', '/terms', '/copyright', '/report'].includes(path);
 }
