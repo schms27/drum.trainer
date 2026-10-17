@@ -90,14 +90,12 @@ func (h *pilotsHandler) create(w http.ResponseWriter, r *http.Request) {
 		MimeType: mimeType,
 	}
 
-	id, err := dbpkg.InsertPilotTrack(h.db, pilot, user.ID)
-	if err != nil {
+	if err := dbpkg.InsertPilotTrack(h.db, pilot, user.ID); err != nil {
 		h.store.Delete(storedName)
 		writeError(w, http.StatusInternalServerError, "failed to save pilot track")
 		return
 	}
 
-	pilot.ID = id
 	writeJSON(w, http.StatusCreated, pilot)
 }
 

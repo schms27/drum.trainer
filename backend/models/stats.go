@@ -19,4 +19,10 @@ type StatTotals struct {
 type StatsResponse struct {
 	Weekly []WeekStat `json:"weekly"`
 	Totals StatTotals `json:"totals"`
+	// StreakDays is the number of consecutive days with at least one take,
+	// ending today — or yesterday, so the streak is not lost before today's
+	// practice. Days are in the requested time zone.
+	StreakDays int `json:"streak_days"`
+	// PracticedToday is true when there is a take today.
+	PracticedToday bool `json:"practiced_today"`
 }

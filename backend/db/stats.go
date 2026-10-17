@@ -96,7 +96,28 @@ func weeklyStats(db *DB, userID int64, now time.Time) (*models.StatsResponse, er
 		TracksPracticed: len(totalTracks),
 	}
 
-	return &models.StatsResponse{Weekly: weekly, Totals: totals}, nil
+	days := make(map[string]bool, len(entries))
+	for _, e := range entries {
+		days[e.createdAt.Format("2006-01-02")] = true
+	}
+	streak, today := practiceStreak(days, now)
+
+	return &models.StatsResponse{Weekly: weekly, Totals: totals, StreakDays: streak, PracticedToday: today}, nil
+}
+
+// practiceStreak counts consecutive practice days (keys "2006-01-02" in now's
+// location) ending today, or ending yesterday when there is no take today yet.
+func practiceStreak(days map[string]bool, now time.Time) (streak int, practicedToday bool) {
+	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	practicedToday = days[day.Format("2006-01-02")]
+	if !practicedToday {
+		day = day.AddDate(0, 0, -1)
+	}
+	for days[day.Format("2006-01-02")] {
+		streak++
+		day = day.AddDate(0, 0, -1)
+	}
+	return streak, practicedToday
 }
 
 // mondayOf returns midnight on the Monday of the week containing t, in t's

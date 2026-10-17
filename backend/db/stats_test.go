@@ -55,3 +55,33 @@ func TestWeeklyStatsUsesUserTimeZone(t *testing.T) {
 		t.Errorf("Zurich: week = %s, want 2026-10-12", got)
 	}
 }
+
+func TestPracticeStreak(t *testing.T) {
+	now := time.Date(2026, 10, 16, 20, 0, 0, 0, time.UTC)
+	set := func(ds ...string) map[string]bool {
+		m := map[string]bool{}
+		for _, d := range ds {
+			m[d] = true
+		}
+		return m
+	}
+	cases := []struct {
+		name   string
+		days   map[string]bool
+		streak int
+		today  bool
+	}{
+		{"none", set(), 0, false},
+		{"today only", set("2026-10-16"), 1, true},
+		{"three days to today", set("2026-10-14", "2026-10-15", "2026-10-16"), 3, true},
+		{"ends yesterday", set("2026-10-14", "2026-10-15"), 2, false},
+		{"gap breaks streak", set("2026-10-13", "2026-10-15", "2026-10-16"), 2, true},
+		{"last take two days ago", set("2026-10-14"), 0, false},
+	}
+	for _, c := range cases {
+		streak, today := practiceStreak(c.days, now)
+		if streak != c.streak || today != c.today {
+			t.Errorf("%s: got (%d, %v), want (%d, %v)", c.name, streak, today, c.streak, c.today)
+		}
+	}
+}

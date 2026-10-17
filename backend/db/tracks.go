@@ -7,24 +7,25 @@ import (
 	"github.com/simu/drum-trainer/backend/models"
 )
 
-// InsertTrack inserts a track row and all its notes inside a single transaction.
-// It returns the new track ID.
-func InsertTrack(db *DB, track *models.Track, notes []models.NoteEvent, userID int64) (int64, error) {
+// InsertTrack inserts a track row and all its notes inside a single transaction,
+// setting the track's ID and creation time.
+func InsertTrack(db *DB, track *models.Track, notes []models.NoteEvent, userID int64) error {
 	tx, err := db.Begin()
 	if err != nil {
-		return 0, err
+		return err
 	}
 	defer tx.Rollback()
 
 	var trackID int64
+	var ct scanTime
 	err = tx.QueryRow(
 		db.Rebind(`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, user_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at`),
 		track.Name, track.Filename, track.FilePath,
 		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM, track.TimeSigNumerator, userID,
-	).Scan(&trackID)
+	).Scan(&trackID, &ct)
 	if err != nil {
-		return 0, fmt.Errorf("insert track: %w", err)
+		return fmt.Errorf("insert track: %w", err)
 	}
 
 	// Bulk-insert notes using a prepared statement for performance.
@@ -33,17 +34,22 @@ func InsertTrack(db *DB, track *models.Track, notes []models.NoteEvent, userID i
 		 VALUES (?, ?, ?, ?, ?)`),
 	)
 	if err != nil {
-		return 0, fmt.Errorf("prepare note insert: %w", err)
+		return fmt.Errorf("prepare note insert: %w", err)
 	}
 	defer stmt.Close()
 
 	for _, n := range notes {
 		if _, err := stmt.Exec(trackID, n.NoteNumber, n.TimeMs, n.Velocity, n.Instrument); err != nil {
-			return 0, fmt.Errorf("insert note: %w", err)
+			return fmt.Errorf("insert note: %w", err)
 		}
 	}
 
-	return trackID, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	track.ID = trackID
+	track.CreatedAt = ct.T
+	return nil
 }
 
 // GetTrack returns a track by ID scoped to the given user.

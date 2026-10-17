@@ -11,13 +11,14 @@ All requests and responses use `application/json` unless noted. File uploads use
 
 ### POST /api/v1/tracks
 
-Upload a MIDI file. The backend parses all channel-10 (drum) note events, converts ticks to milliseconds (multi-tempo-aware), stores the file on disk, and persists track metadata + notes in SQLite.
+Upload a MIDI file. The backend parses the drum part's note events, converts ticks to milliseconds (multi-tempo-aware), stores the file on disk, and persists track metadata + notes in the database.
 
 **Request:** `multipart/form-data`
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `file` | File | `.mid` file, max 16 MB |
+| `channel` | string, optional | MIDI channel of the drum part: `1`–`16`, or `auto` to detect it (channel 10 if it has notes, otherwise the channel whose notes are mostly General MIDI drum notes). Defaults to `10`. The web app sends `auto`. |
 
 **Response `201 Created`:**
 ```json
@@ -38,7 +39,7 @@ Upload a MIDI file. The backend parses all channel-10 (drum) note events, conver
 ```
 
 **Error responses:**
-- `400 Bad Request` — not a valid MIDI file, or no channel-10 notes found
+- `400 Bad Request` — not a valid MIDI file, no notes on the chosen channel, or (`auto`) no drum part found
 - `413 Content Too Large` — file exceeds `MAX_UPLOAD_SIZE_MB`
 
 ---
@@ -57,7 +58,14 @@ List all uploaded tracks. Notes are not included in the list response.
       "filename": "track_a.mid",
       "duration_ms": 124350.5,
       "note_count": 842,
-      "created_at": "2026-02-19T10:00:00Z"
+      "created_at": "2026-02-19T10:00:00Z",
+      "stats": {
+        "sessions": 7,
+        "best_hit_rate": 0.96,
+        "last_hit_rate": 0.92,
+        "last_practiced_at": "2026-10-16T20:44:03Z",
+        "recent_hit_rates": [0.83, 0.88, 0.88, 0.96, 0.92]
+      }
     },
     {
       "id": 2,
@@ -73,11 +81,20 @@ List all uploaded tracks. Notes are not included in the list response.
 
 ---
 
+Every track carries `stats` (the user's practice on it):
+
+| Field | Description |
+|-------|-------------|
+| `sessions` | Number of takes recorded |
+| `best_hit_rate`, `last_hit_rate` | Best and most recent hit rate (0–1); `null` before the first take |
+| `last_practiced_at` | Time of the most recent take; `null` before the first take |
+| `recent_hit_rates` | Hit rates of up to the 10 latest takes, oldest first |
+
 ### GET /api/v1/tracks/:id
 
-Fetch a single track with all its parsed notes. Used by the recording page to display the target.
+Fetch a single track with all its parsed notes and its `stats`. Used by the track and recording pages.
 
-**Response `200 OK`:** Same shape as the POST /tracks response.
+**Response `200 OK`:** Same shape as the POST /tracks response, plus `stats`.
 
 **Error responses:**
 - `404 Not Found` — track ID does not exist
@@ -234,6 +251,31 @@ Retrieve the full result for a completed session. Used by the results page.
 
 **Error responses:**
 - `404 Not Found` — session ID does not exist
+
+---
+
+## Stats
+
+### GET /api/v1/stats
+
+Practice statistics for the trailing 12 months.
+
+**Query parameters:**
+- `tz` (optional) — IANA time zone (e.g. `Europe/Zurich`) used for week and day boundaries; default UTC.
+
+**Response `200 OK`:**
+```json
+{
+  "weekly": [
+    { "week_start": "2026-10-12", "session_count": 8, "minutes_played": 1.2, "tracks_practiced": 2 }
+  ],
+  "totals": { "sessions": 8, "minutes_played": 1.2, "tracks_practiced": 2 },
+  "streak_days": 3,
+  "practiced_today": true
+}
+```
+
+`weekly` always has 52 entries ending with the current week. `streak_days` counts consecutive days with at least one take, ending today — or yesterday, so a streak isn't shown as lost before today's practice.
 
 ---
 
