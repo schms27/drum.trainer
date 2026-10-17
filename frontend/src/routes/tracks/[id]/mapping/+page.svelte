@@ -2,11 +2,23 @@
 	import type { NoteMapping } from '$lib/types/track';
 	import { updateTrackMapping } from '$lib/api/tracks';
 	import { INSTRUMENTS } from '$lib/drums';
+	import { Check } from '@lucide/svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Notice from '$lib/components/ui/Notice.svelte';
 
 	let { data } = $props();
 
 	// Local copy of mappings for editing.
+	// svelte-ignore state_referenced_locally
 	let mappings: NoteMapping[] = $state(data.mappings.map((m) => ({ ...m })));
+
+	// How often each note occurs in the track, to show which rows matter most.
+	// svelte-ignore state_referenced_locally
+	const noteCounts = data.track.notes.reduce<Record<number, number>>((acc, n) => {
+		acc[n.note_number] = (acc[n.note_number] ?? 0) + 1;
+		return acc;
+	}, {});
 
 	let saving = $state(false);
 	let message = $state('');
@@ -65,66 +77,66 @@
 	}
 </script>
 
-<svelte:head><title>Mapping: {data.track.name} — Drum Trainer</title></svelte:head>
+<svelte:head><title>Pad mapping: {data.track.name} — Drum Trainer</title></svelte:head>
 
-<div class="min-h-screen bg-zinc-900 text-white p-6 max-w-2xl mx-auto">
-	<div class="mb-6 flex items-center justify-between">
-		<div>
-			<h1 class="text-2xl font-bold">Drum Mapping</h1>
-			<p class="text-zinc-400 text-sm mt-0.5">{data.track.name}</p>
-		</div>
-		<a href="/" class="text-zinc-400 hover:text-white text-sm transition">← Back to Tracks</a>
-	</div>
+<PageHeader
+	title="Pad mapping"
+	subtitle={data.track.name}
+	back={{ href: '/', label: 'Library' }}
+/>
 
-	<div class="bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden mb-4">
-		<table class="w-full text-sm">
-			<thead>
-				<tr class="border-b border-zinc-700 text-zinc-400 text-xs uppercase tracking-wide">
-					<th class="text-left px-4 py-3">Note #</th>
-					<th class="text-left px-4 py-3">GM Name</th>
-					<th class="text-left px-4 py-3">Instrument</th>
+<Notice>
+	Every MIDI note in this track belongs to an instrument. Hits are only compared with notes of the same
+	instrument, so a bass drum hit never counts for the snare. The defaults follow the General MIDI standard —
+	change them only if this file (or your kit) uses different note numbers.
+</Notice>
+
+<div class="bg-card border border-line rounded-xl overflow-hidden">
+	<table class="w-full text-sm">
+		<thead>
+			<tr class="border-b border-line text-fg-muted text-xs">
+				<th scope="col" class="text-left font-medium px-4 py-3">MIDI note</th>
+				<th scope="col" class="text-right font-medium px-4 py-3">In track</th>
+				<th scope="col" class="text-left font-medium px-4 py-3">Instrument</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each mappings as mapping, i (mapping.note_number)}
+				<tr class="border-b border-line-subtle last:border-0">
+					<th scope="row" class="text-left font-normal px-4 py-2">
+						<span class="text-fg">{GM_NAMES[mapping.note_number] ?? 'Non-standard note'}</span>
+						<span class="text-fg-subtle font-mono text-xs ml-1">#{mapping.note_number}</span>
+					</th>
+					<td class="px-4 py-2 text-right text-fg-muted tabular-nums">{noteCounts[mapping.note_number] ?? 0}×</td>
+					<td class="px-4 py-2">
+						<label class="sr-only" for="instr-{mapping.note_number}">Instrument for note {mapping.note_number}</label>
+						<select
+							id="instr-{mapping.note_number}"
+							bind:value={mappings[i].instrument}
+							class="bg-control text-fg border border-line rounded-lg px-2 h-9 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+						>
+							{#each INSTRUMENTS as instr}
+								<option value={instr}>{instr}</option>
+							{/each}
+						</select>
+					</td>
 				</tr>
-			</thead>
-			<tbody>
-				{#each mappings as mapping, i}
-					<tr class="border-b border-zinc-700/50 last:border-0">
-						<td class="px-4 py-2 font-mono text-zinc-300">{mapping.note_number}</td>
-						<td class="px-4 py-2 text-zinc-400">
-							{GM_NAMES[mapping.note_number] ?? '—'}
-						</td>
-						<td class="px-4 py-2">
-							<select
-								bind:value={mappings[i].instrument}
-								class="bg-zinc-700 border border-zinc-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-							>
-								{#each INSTRUMENTS as instr}
-									<option value={instr}>{instr}</option>
-								{/each}
-							</select>
-						</td>
-					</tr>
-				{/each}
-				{#if mappings.length === 0}
-					<tr>
-						<td colspan="3" class="px-4 py-6 text-center text-zinc-500">
-							No notes found in this track.
-						</td>
-					</tr>
-				{/if}
-			</tbody>
-		</table>
-	</div>
+			{:else}
+				<tr>
+					<td colspan="3" class="px-4 py-6 text-center text-fg-subtle">No notes found in this track.</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+</div>
 
-	<div class="flex items-center gap-4">
-		<button
-			onclick={handleSave}
-			disabled={saving || mappings.length === 0}
-			class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg px-5 py-2 text-sm font-medium transition"
-		>
-			{saving ? 'Saving…' : 'Save'}
-		</button>
-		{#if message}
-			<span class={messageOk ? 'text-green-400 text-sm' : 'text-red-400 text-sm'}>{message}</span>
-		{/if}
-	</div>
+<div class="flex items-center gap-4">
+	<Button variant="primary" onclick={handleSave} disabled={saving || mappings.length === 0}>
+		{saving ? 'Saving…' : 'Save mapping'}
+	</Button>
+	{#if message}
+		<span class="inline-flex items-center gap-1 text-sm {messageOk ? 'text-good' : 'text-bad'}" role="status">
+			{#if messageOk}<Check size={16} aria-hidden="true" />{/if}{message}
+		</span>
+	{/if}
 </div>

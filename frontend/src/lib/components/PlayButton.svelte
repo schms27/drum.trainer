@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createPlayer, type PlayableHit } from '$lib/midi/player';
 	import type { Metronome } from '$lib/midi/metronome';
+	import { Play, Square, LoaderCircle } from '@lucide/svelte';
 
 	let {
 		hits,
@@ -57,17 +58,18 @@
 </script>
 
 <button
+	type="button"
 	onclick={toggle}
 	disabled={hits.length === 0}
-	class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition
-		   bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-200"
+	aria-pressed={playing}
+	class="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer
+		bg-control text-fg hover:bg-control-hover disabled:opacity-40 disabled:cursor-not-allowed"
 >
 	{#if playing}
-		<span class="text-red-400">⏹</span> Stop
+		<Square size={14} class="text-bad" aria-hidden="true" /> Stop
 	{:else if waiting}
-		<span class="text-amber-400 animate-pulse">◉</span> Syncing…
+		<LoaderCircle size={14} class="text-warn animate-spin" aria-hidden="true" /> Waiting for bar 1…
 	{:else}
-		<span>▶</span>
-		{label}
+		<Play size={14} aria-hidden="true" /> {label}
 	{/if}
 </button>

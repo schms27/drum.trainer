@@ -1,34 +1,31 @@
 <script lang="ts">
+	import { Clock, Gauge, Music, Trash, SlidersHorizontal, AudioLines, ChevronDown, Play } from '@lucide/svelte';
 	import type { Track } from '$lib/types/track';
 	import { deleteTrack } from '$lib/api/tracks';
 	import { listPilots, uploadPilot, deletePilot, type PilotTrack } from '$lib/api/pilots';
+	import Button from '$lib/components/ui/Button.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
-	let {
-		track,
-		onDeleted
-	}: {
-		track: Track;
-		onDeleted: (id: number) => void;
-	} = $props();
+	let { track, onDeleted }: { track: Track; onDeleted: (id: number) => void } = $props();
 
-	let deleting = $state(false);
-	let showPilots = $state(false);
-	let pilots = $state<PilotTrack[]>([]);
-	let pilotsLoaded = $state(false);
-	let pilotsLoading = $state(false);
+	let confirmDelete = $state(false);
 
-	// Upload state
+	// Backing tracks ("pilot tracks" in the API): audio that plays along while recording.
+	let showBacking = $state(false);
+	let backing = $state<PilotTrack[]>([]);
+	let backingLoaded = $state(false);
+	let backingLoading = $state(false);
+
 	let uploadName = $state('');
 	let uploadFile = $state<File | null>(null);
 	let uploading = $state(false);
 	let uploadProgress = $state(0);
 	let uploadError = $state('');
+	let fileInput = $state<HTMLInputElement>();
 
 	function formatDuration(ms: number) {
 		const secs = Math.floor(ms / 1000);
-		const m = Math.floor(secs / 60);
-		const s = secs % 60;
-		return `${m}:${String(s).padStart(2, '0')}`;
+		return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 	}
 
 	function formatSize(bytes: number): string {
@@ -37,35 +34,26 @@
 	}
 
 	async function handleDelete() {
-		if (!confirm(`Delete "${track.name}"?`)) return;
-		deleting = true;
-		try {
-			await deleteTrack(track.id);
-			onDeleted(track.id);
-		} finally {
-			deleting = false;
-		}
+		await deleteTrack(track.id);
+		onDeleted(track.id);
 	}
 
-	async function togglePilots() {
-		showPilots = !showPilots;
-		if (showPilots && !pilotsLoaded) {
-			pilotsLoading = true;
+	async function toggleBacking() {
+		showBacking = !showBacking;
+		if (showBacking && !backingLoaded) {
+			backingLoading = true;
 			try {
-				pilots = await listPilots(track.id);
-				pilotsLoaded = true;
+				backing = await listPilots(track.id);
+				backingLoaded = true;
 			} finally {
-				pilotsLoading = false;
+				backingLoading = false;
 			}
 		}
 	}
 
 	function handleFileChange(e: Event) {
-		const input = e.target as HTMLInputElement;
-		uploadFile = input.files?.[0] ?? null;
-		if (uploadFile && !uploadName) {
-			uploadName = uploadFile.name.replace(/\.[^.]+$/, '');
-		}
+		uploadFile = (e.target as HTMLInputElement).files?.[0] ?? null;
+		if (uploadFile && !uploadName) uploadName = uploadFile.name.replace(/\.[^.]+$/, '');
 	}
 
 	async function handleUpload() {
@@ -74,16 +62,11 @@
 		uploadProgress = 0;
 		uploadError = '';
 		try {
-			const pilot = await uploadPilot(track.id, uploadName.trim(), uploadFile, (pct) => {
-				uploadProgress = pct;
-			});
-			pilots = [...pilots, pilot];
+			const added = await uploadPilot(track.id, uploadName.trim(), uploadFile, (pct) => (uploadProgress = pct));
+			backing = [...backing, added];
 			uploadName = '';
 			uploadFile = null;
-			uploadProgress = 0;
-			// Reset file input
-			const input = document.getElementById(`pilot-file-${track.id}`) as HTMLInputElement | null;
-			if (input) input.value = '';
+			if (fileInput) fileInput.value = '';
 		} catch (e: unknown) {
 			uploadError = e instanceof Error ? e.message : 'Upload failed';
 		} finally {
@@ -91,108 +74,116 @@
 		}
 	}
 
-	async function handleDeletePilot(pilotId: number) {
-		await deletePilot(track.id, pilotId);
-		pilots = pilots.filter((p) => p.id !== pilotId);
+	async function handleDeleteBacking(id: number) {
+		await deletePilot(track.id, id);
+		backing = backing.filter((p) => p.id !== id);
 	}
 </script>
 
-<div class="bg-zinc-800 rounded-xl p-5 flex flex-col gap-3 border border-zinc-700">
+<article class="bg-card border border-line rounded-xl p-5 flex flex-col gap-4">
 	<div class="flex items-start justify-between gap-2">
-		<div>
-			<h3 class="text-white font-semibold text-base leading-tight">{track.name}</h3>
-			<p class="text-zinc-500 text-xs mt-0.5 truncate max-w-[200px]" title={track.filename}>
-				{track.filename}
-			</p>
+		<div class="min-w-0">
+			<h3 class="font-semibold text-fg leading-tight break-words">{track.name}</h3>
+			<p class="text-fg-subtle text-xs mt-1 truncate" title={track.filename}>{track.filename}</p>
 		</div>
 		<button
-			onclick={handleDelete}
-			disabled={deleting}
-			class="text-zinc-500 hover:text-red-400 transition text-sm"
-			aria-label="Delete track"
-		>✕</button>
+			type="button"
+			onclick={() => (confirmDelete = true)}
+			class="shrink-0 w-8 h-8 -mr-2 -mt-1 flex items-center justify-center rounded-lg text-fg-subtle hover:text-bad hover:bg-control transition-colors cursor-pointer"
+			aria-label="Delete {track.name}"
+			title="Delete track"
+		>
+			<Trash size={16} aria-hidden="true" />
+		</button>
 	</div>
 
-	<div class="flex gap-4 text-xs text-zinc-400">
-		<span>⏱ {formatDuration(track.duration_ms)}</span>
-		<span>🎵 {track.note_count} notes</span>
+	<dl class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted">
+		<div class="flex items-center gap-1" title="Length">
+			<Clock size={14} aria-hidden="true" /><dt class="sr-only">Length</dt><dd>{formatDuration(track.duration_ms)}</dd>
+		</div>
+		<div class="flex items-center gap-1" title="Tempo">
+			<Gauge size={14} aria-hidden="true" /><dt class="sr-only">Tempo</dt><dd>{Math.round(track.bpm)} BPM</dd>
+		</div>
+		<div class="flex items-center gap-1" title="Notes">
+			<Music size={14} aria-hidden="true" /><dt class="sr-only">Notes</dt><dd>{track.note_count} notes</dd>
+		</div>
+	</dl>
+
+	<Button href="/session/{track.id}" variant="primary" block>
+		<Play size={16} aria-hidden="true" /> Practice
+	</Button>
+
+	<div class="flex flex-wrap gap-2 -mt-1">
+		<Button href="/tracks/{track.id}/mapping" variant="ghost" size="sm">
+			<SlidersHorizontal size={14} aria-hidden="true" /> Pad mapping
+		</Button>
+		<Button variant="ghost" size="sm" onclick={toggleBacking} aria-expanded={showBacking}>
+			<AudioLines size={14} aria-hidden="true" />
+			Backing tracks{backingLoaded ? ` (${backing.length})` : ''}
+			<ChevronDown size={14} class="transition-transform {showBacking ? 'rotate-180' : ''}" aria-hidden="true" />
+		</Button>
 	</div>
 
-	<a
-		href="/session/{track.id}"
-		class="mt-1 block text-center bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg py-2 text-sm font-medium transition"
-	>
-		Practice
-	</a>
-	<a
-		href="/tracks/{track.id}/mapping"
-		class="block text-center text-zinc-400 hover:text-white text-xs transition"
-	>
-		Edit Mapping
-	</a>
-
-	<!-- Pilot tracks section -->
-	<button
-		onclick={togglePilots}
-		class="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition text-left"
-	>
-		<span>{showPilots ? '▾' : '▸'}</span>
-		<span>Pilot Tracks {pilotsLoaded ? `(${pilots.length})` : ''}</span>
-	</button>
-
-	{#if showPilots}
-		<div class="flex flex-col gap-2 border-t border-zinc-700 pt-3">
-			{#if pilotsLoading}
-				<p class="text-zinc-500 text-xs">Loading…</p>
+	{#if showBacking}
+		<div class="flex flex-col gap-3 border-t border-line pt-4">
+			<p class="text-xs text-fg-muted">
+				Audio (MP3, WAV, …) that plays along while you record — for example the song without drums.
+			</p>
+			{#if backingLoading}
+				<p class="text-fg-subtle text-xs">Loading…</p>
 			{:else}
-				{#each pilots as pilot (pilot.id)}
-					<div class="flex items-center gap-2 text-xs">
-						<span class="flex-1 text-zinc-300 truncate" title={pilot.name}>{pilot.name}</span>
-						<span class="text-zinc-500 shrink-0">{formatSize(pilot.file_size)}</span>
+				{#each backing as item (item.id)}
+					<div class="flex items-center gap-2 text-sm">
+						<span class="flex-1 text-fg truncate" title={item.name}>{item.name}</span>
+						<span class="text-fg-subtle text-xs shrink-0">{formatSize(item.file_size)}</span>
 						<button
-							onclick={() => handleDeletePilot(pilot.id)}
-							class="text-zinc-600 hover:text-red-400 transition shrink-0"
-							aria-label="Delete pilot"
-						>✕</button>
+							type="button"
+							onclick={() => handleDeleteBacking(item.id)}
+							class="w-7 h-7 flex items-center justify-center rounded-md text-fg-subtle hover:text-bad hover:bg-control cursor-pointer"
+							aria-label="Remove backing track {item.name}"
+						>
+							<Trash size={14} aria-hidden="true" />
+						</button>
 					</div>
 				{/each}
 
-				<!-- Upload form -->
-				<div class="flex flex-col gap-2 mt-1">
+				<div class="flex flex-col gap-2">
 					<input
-						type="text"
-						placeholder="Name"
-						bind:value={uploadName}
-						class="bg-zinc-700 border border-zinc-600 text-white text-xs rounded px-2 py-1 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
-					/>
-					<input
-						id="pilot-file-{track.id}"
+						bind:this={fileInput}
 						type="file"
 						accept="audio/*"
 						onchange={handleFileChange}
-						class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-zinc-700 file:text-zinc-300 hover:file:bg-zinc-600 file:cursor-pointer"
+						aria-label="Backing track audio file"
+						class="text-xs text-fg-muted file:mr-2 file:h-8 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-control file:text-fg hover:file:bg-control-hover file:cursor-pointer"
 					/>
-					{#if uploading}
-						<div class="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-							<div
-								class="h-full bg-indigo-500 rounded-full transition-[width] duration-100"
-								style="width: {uploadProgress}%"
-							></div>
-						</div>
-					{:else}
-						<button
-							onclick={handleUpload}
-							disabled={!uploadFile || !uploadName.trim()}
-							class="text-xs bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-200 rounded px-3 py-1 transition"
-						>
-							Upload
-						</button>
+					{#if uploadFile}
+						<input
+							type="text"
+							placeholder="Name, e.g. Full mix"
+							bind:value={uploadName}
+							aria-label="Backing track name"
+							class="bg-control text-fg text-sm rounded-lg px-3 h-9 border border-line placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-accent"
+						/>
+						{#if uploading}
+							<div class="h-1.5 bg-control rounded-full overflow-hidden" role="progressbar" aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100}>
+								<div class="h-full bg-accent rounded-full transition-[width]" style="width: {uploadProgress}%"></div>
+							</div>
+						{:else}
+							<Button size="sm" onclick={handleUpload} disabled={!uploadName.trim()}>Add backing track</Button>
+						{/if}
 					{/if}
-					{#if uploadError}
-						<p class="text-red-400 text-xs">{uploadError}</p>
-					{/if}
+					{#if uploadError}<p class="text-bad text-xs">{uploadError}</p>{/if}
 				</div>
 			{/if}
 		</div>
 	{/if}
-</div>
+</article>
+
+<ConfirmDialog
+	bind:open={confirmDelete}
+	title="Delete “{track.name}”?"
+	message="This removes the track, its backing tracks and all practice sessions recorded for it. This cannot be undone."
+	confirmLabel="Delete track"
+	danger
+	onConfirm={handleDelete}
+/>

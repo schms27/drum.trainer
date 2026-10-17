@@ -1,28 +1,29 @@
 <script lang="ts">
 	import '../app.css';
+	import type { Snippet } from 'svelte';
 	import Header from '$lib/components/layout/Header.svelte';
 	import { navigating } from '$app/state';
-	const appVersion = import.meta.env.VITE_APP_VERSION ?? 'dev';
 	import type { LayoutData } from './$types';
+	import '$lib/theme.svelte';
 
-	let { data, children }: { data: LayoutData; children: any } = $props();
+	const appVersion = import.meta.env.VITE_APP_VERSION ?? 'dev';
+
+	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 </script>
 
 {#if data.user}
 	{#if navigating.to}
-		<div class="nav-loading-track">
+		<div class="nav-loading-track" aria-hidden="true">
 			<div class="nav-loading-bar"></div>
 		</div>
 	{/if}
 
-	<div class="min-h-screen bg-zinc-950 text-white flex flex-col">
+	<div class="min-h-screen bg-canvas text-fg flex flex-col">
 		<Header user={data.user} />
-		<main class="max-w-5xl w-full mx-auto px-4 py-8 flex-1">
+		<main class="max-w-5xl w-full mx-auto px-4 py-8 flex-1 flex flex-col gap-8">
 			{@render children()}
 		</main>
-		<footer class="text-center text-zinc-600 text-xs py-4">
-			v{appVersion}
-		</footer>
+		<footer class="text-center text-fg-subtle text-xs py-4">Drum Trainer · version {appVersion}</footer>
 	</div>
 {:else}
 	{@render children()}
@@ -35,7 +36,7 @@
 		left: 0;
 		right: 0;
 		height: 3px;
-		background: #18181b; /* zinc-900 */
+		background: var(--panel);
 		z-index: 9999;
 		overflow: hidden;
 	}
@@ -44,13 +45,17 @@
 		position: absolute;
 		height: 100%;
 		width: 45%;
-		background: #6366f1; /* indigo-500 */
+		background: var(--accent);
 		border-radius: 0 2px 2px 0;
 		animation: nav-slide 1.2s ease-in-out infinite;
 	}
 
 	@keyframes nav-slide {
-		0%   { left: -45%; }
-		100% { left: 110%; }
+		0% {
+			left: -45%;
+		}
+		100% {
+			left: 110%;
+		}
 	}
 </style>

@@ -2,8 +2,11 @@
 	import { createRecorder, type Recorder } from '$lib/midi/recorder';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { NoteEvent } from '$lib/types/track';
+	import { CircleDot, Square, RotateCcw } from '@lucide/svelte';
 	import LiveEventFeed from './LiveEventFeed.svelte';
 	import HitTimeline from './HitTimeline.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Notice from '$lib/components/ui/Notice.svelte';
 
 	let {
 		deviceId,
@@ -139,64 +142,50 @@
 </script>
 
 <div class="flex flex-col gap-4">
-	<div class="flex gap-3 items-center">
-		{#if recorderState === 'idle'}
-			<button
-				onclick={start}
-				disabled={!deviceId}
-				class="px-5 py-2 bg-green-600 hover:bg-green-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg font-medium transition"
-			>
-				▶ Start Recording
-			</button>
-		{:else if recorderState === 'waiting'}
-			<button
-				onclick={stop}
-				class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition"
-			>
-				⏹ Stop
-			</button>
-			<span class="text-yellow-400 text-sm animate-pulse">◉ Waiting for first hit…</span>
-		{:else if recorderState === 'recording'}
-			<button
-				onclick={stop}
-				class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition"
-			>
-				⏹ Stop
-			</button>
-			<span class="text-red-400 text-sm animate-pulse">● Recording…</span>
-		{:else}
-			<span class="text-zinc-400 text-sm">Submitting…</span>
+	<div class="bg-card border border-line rounded-xl p-5 flex flex-col gap-4">
+		<div class="flex flex-wrap items-center gap-3">
+			{#if recorderState === 'idle'}
+				<Button variant="success" size="lg" onclick={start} disabled={!deviceId}>
+					<CircleDot size={18} aria-hidden="true" /> Start
+				</Button>
+				{#if deviceId}
+					<p class="text-sm text-fg-muted">Press Start, then play. Recording begins with your first note.</p>
+				{:else}
+					<p class="text-sm text-fg-muted">Connect your kit (step 1) to start recording.</p>
+				{/if}
+			{:else if recorderState === 'waiting' || recorderState === 'recording'}
+				<Button variant="danger" size="lg" onclick={stop}>
+					<Square size={16} aria-hidden="true" /> Stop
+				</Button>
+				<Button variant="ghost" onclick={reset}>
+					<RotateCcw size={16} aria-hidden="true" /> Discard
+				</Button>
+				<p class="flex items-center gap-2 text-sm font-medium {recorderState === 'waiting' ? 'text-warn' : 'text-bad'}" role="status">
+					<span class="w-2.5 h-2.5 rounded-full animate-pulse {recorderState === 'waiting' ? 'bg-warn-solid' : 'bg-bad-solid'}" aria-hidden="true"></span>
+					{recorderState === 'waiting' ? 'Ready — play the first note to start recording' : 'Recording… press Stop when you are done'}
+				</p>
+			{:else}
+				<p class="text-sm text-fg-muted" role="status">Scoring your take…</p>
+			{/if}
+		</div>
+
+		{#if recorderState === 'recording' && effectiveDurationMs > 0}
+			{@const pct = Math.min((currentTimeMs / effectiveDurationMs) * 100, 100)}
+			<div class="flex flex-col gap-1">
+				<div class="flex justify-between text-xs text-fg-muted tabular-nums">
+					<span>{formatTime(currentTimeMs)} / {formatTime(effectiveDurationMs)}</span>
+					<span>{Math.round(pct)}%</span>
+				</div>
+				<div class="h-2 bg-control rounded-full overflow-hidden" role="progressbar" aria-label="Track progress" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+					<div class="h-full bg-accent rounded-full transition-[width] duration-100" style="width: {pct}%"></div>
+				</div>
+			</div>
 		{/if}
 
-		{#if recorderState !== 'idle'}
-			<button
-				onclick={reset}
-				class="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded-lg text-sm transition"
-			>
-				Reset
-			</button>
+		{#if error}
+			<Notice variant="error">{error}</Notice>
 		{/if}
 	</div>
-
-	{#if recorderState === 'recording' && effectiveDurationMs > 0}
-		{@const pct = Math.min((currentTimeMs / effectiveDurationMs) * 100, 100)}
-		<div class="flex flex-col gap-1">
-			<div class="flex justify-between text-xs text-zinc-400">
-				<span>{formatTime(currentTimeMs)} / {formatTime(effectiveDurationMs)}</span>
-				<span>{Math.round(pct)}%</span>
-			</div>
-			<div class="h-2 bg-zinc-700 rounded-full overflow-hidden">
-				<div
-					class="h-full bg-indigo-500 rounded-full transition-[width] duration-100"
-					style="width: {pct}%"
-				></div>
-			</div>
-		</div>
-	{/if}
-
-	{#if error}
-		<p class="text-red-400 text-sm">{error}</p>
-	{/if}
 
 	<HitTimeline
 		{expectedHits}

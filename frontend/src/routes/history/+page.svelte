@@ -1,10 +1,18 @@
 <script lang="ts">
+	import { ChevronRight, ListMusic } from '@lucide/svelte';
 	import { listSessions } from '$lib/api/sessions';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import ProgressTabs from '$lib/components/layout/ProgressTabs.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import { formatOffset, formatPercent, hitRateTone, timingTone, toneText } from '$lib/score-format';
 
 	const { data } = $props();
+	// svelte-ignore state_referenced_locally
 	const { trackNames } = data;
-
+	// svelte-ignore state_referenced_locally
 	let sessions = $state(data.sessions);
+	// svelte-ignore state_referenced_locally
 	let hasMore = $state(data.hasMore);
 	let loadingMore = $state(false);
 
@@ -21,71 +29,61 @@
 	}
 
 	function formatDate(iso: string) {
-		return new Date(iso).toLocaleString();
-	}
-
-	function formatHitRate(rate: number) {
-		return (rate * 100).toFixed(1) + '%';
-	}
-
-	function formatOffset(ms: number) {
-		const sign = ms >= 0 ? '+' : '';
-		return sign + ms.toFixed(0) + ' ms';
+		return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 	}
 </script>
 
-<svelte:head><title>History — Drum Trainer</title></svelte:head>
+<svelte:head><title>Progress — Drum Trainer</title></svelte:head>
 
-<div class="max-w-4xl mx-auto p-6">
-	<h1 class="text-2xl font-bold text-white mb-6">Practice History</h1>
+<PageHeader title="Progress" subtitle="Every take you have recorded, newest first." />
+<ProgressTabs />
 
-	{#if sessions.length === 0}
-		<p class="text-zinc-400">No practice sessions recorded yet. Go play a track!</p>
-	{:else}
-		<table class="w-full text-sm text-left">
-			<thead>
-				<tr class="border-b border-zinc-700 text-zinc-400">
-					<th class="pb-3 pr-4 font-medium">Track</th>
-					<th class="pb-3 pr-4 font-medium">Date</th>
-					<th class="pb-3 pr-4 font-medium text-right">Hits</th>
-					<th class="pb-3 pr-4 font-medium text-right">Hit Rate</th>
-					<th class="pb-3 pr-4 font-medium text-right">Avg Offset</th>
-					<th class="pb-3 font-medium"></th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each sessions as session}
-					<tr class="border-b border-zinc-800 hover:bg-zinc-800/40 transition">
-						<td class="py-3 pr-4 text-white">
-							{trackNames.get(session.track_id) ?? 'Unknown'}
-						</td>
-						<td class="py-3 pr-4 text-zinc-300">{formatDate(session.created_at)}</td>
-						<td class="py-3 pr-4 text-zinc-300 text-right">{session.matched_count} / {session.target_count}</td>
-						<td class="py-3 pr-4 text-zinc-300 text-right">{formatHitRate(session.hit_rate)}</td>
-						<td class="py-3 pr-4 text-zinc-300 text-right">{formatOffset(session.avg_offset_ms)}</td>
-						<td class="py-3">
-							<a
-								href="/results/{session.id}"
-								class="text-indigo-400 hover:text-indigo-300 transition font-medium"
-							>
-								Results →
-							</a>
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	{/if}
+{#if sessions.length === 0}
+	<EmptyState
+		title="No takes recorded yet"
+		description="Pick a track in your library, press Start and play along. Your results will show up here."
+	>
+		{#snippet icon()}<ListMusic size={32} aria-hidden="true" />{/snippet}
+		{#snippet action()}<Button href="/" variant="primary">Go to library</Button>{/snippet}
+	</EmptyState>
+{:else}
+	<ul class="flex flex-col gap-2">
+		{#each sessions as session (session.id)}
+			<li>
+				<a
+					href="/results/{session.id}"
+					class="group flex items-center gap-4 bg-card border border-line rounded-xl px-4 py-3 hover:border-accent transition-colors"
+				>
+					<div class="min-w-0 flex-1">
+						<p class="font-medium text-fg truncate">{trackNames.get(session.track_id) ?? 'Deleted track'}</p>
+						<p class="text-xs text-fg-subtle mt-0.5">{formatDate(session.created_at)}</p>
+					</div>
+					<dl class="flex items-center gap-4 sm:gap-8 text-right shrink-0">
+						<div>
+							<dt class="text-xs text-fg-subtle">Notes hit</dt>
+							<dd class="font-semibold tabular-nums {toneText[hitRateTone(session.hit_rate)]}">
+								{formatPercent(session.hit_rate)}
+								<span class="hidden sm:inline text-xs font-normal text-fg-subtle"
+									>{session.matched_count}/{session.target_count}</span
+								>
+							</dd>
+						</div>
+						<div class="hidden sm:block">
+							<dt class="text-xs text-fg-subtle">Average timing</dt>
+							<dd class="font-semibold tabular-nums {toneText[timingTone(session.avg_offset_ms)]}">
+								{formatOffset(session.avg_offset_ms)}
+							</dd>
+						</div>
+					</dl>
+					<ChevronRight size={18} class="text-fg-subtle group-hover:text-accent-text shrink-0" aria-hidden="true" />
+				</a>
+			</li>
+		{/each}
+	</ul>
 
 	{#if hasMore}
-		<div class="mt-6 text-center">
-			<button
-				onclick={loadMore}
-				disabled={loadingMore}
-				class="px-5 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 border border-zinc-700 text-zinc-300 rounded-lg text-sm transition"
-			>
-				{loadingMore ? 'Loading…' : 'Load more'}
-			</button>
+		<div class="text-center">
+			<Button onclick={loadMore} disabled={loadingMore}>{loadingMore ? 'Loading…' : 'Show older takes'}</Button>
 		</div>
 	{/if}
-</div>
+{/if}

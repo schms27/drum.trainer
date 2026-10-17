@@ -7,7 +7,7 @@
 		data,
 		valueKey,
 		label,
-		color = '#6366f1',
+		color = 'var(--accent)',
 		unit = ''
 	}: {
 		data: WeekStat[];
@@ -96,8 +96,8 @@
 	});
 </script>
 
-<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-	<h2 class="text-sm font-semibold text-zinc-300 mb-4">{label}</h2>
+<div class="bg-card border border-line rounded-xl p-5">
+	<h2 class="text-sm font-semibold text-fg mb-4">{label}</h2>
 
 	<svg viewBox="0 0 {W} {H}" class="w-full" style="overflow: visible;" aria-label={label}>
 		<!-- Grid + Y axis labels -->
@@ -107,11 +107,11 @@
 				y1={tick.y}
 				x2={W - PAD.right}
 				y2={tick.y}
-				stroke="#3f3f46"
+				style:stroke="var(--chart-grid)"
 				stroke-width="1"
 			/>
-			<text x={PAD.left - 5} y={tick.y + 4} text-anchor="end" fill="#71717a" font-size="10">
-				{Math.round(tick.v)}
+			<text x={PAD.left - 5} y={tick.y + 4} text-anchor="end" style:fill="var(--fg-subtle)" font-size="10">
+				{Number.isInteger(tick.v) ? tick.v : tick.v.toFixed(1)}
 			</text>
 		{/each}
 
@@ -134,35 +134,35 @@
 					y={by(bar.value)}
 					width={barW - gap}
 					height={bh(bar.value)}
-					fill={isCurrentWeek ? '#818cf8' : color}
+					style:fill={color}
 					rx="2"
-					opacity={hovered?.i === i ? 1 : 0.75}
+					opacity={hovered?.i === i || isCurrentWeek ? 1 : 0.7}
 				/>
 			{/if}
 		{/each}
 
 		<!-- X axis month labels -->
 		{#each xLabels as xl}
-			<text x={xl.x} y={H - 4} text-anchor="middle" fill="#71717a" font-size="10">
+			<text x={xl.x} y={H - 4} text-anchor="middle" style:fill="var(--fg-subtle)" font-size="10">
 				{xl.label}
 			</text>
 		{/each}
 
 		<!-- Tooltip -->
 		{#if hovered && tipPos}
-			<rect x={tipPos.x} y={tipPos.y} width={ttW} height={ttH} rx="4" fill="#18181b" stroke="#3f3f46" />
+			<rect x={tipPos.x} y={tipPos.y} width={ttW} height={ttH} rx="4" style:fill="var(--panel)" style:stroke="var(--line)" />
 			<text
 				x={tipPos.x + ttW / 2}
 				y={tipPos.y + 14}
 				text-anchor="middle"
-				fill="#a1a1aa"
+				style:fill="var(--fg-muted)"
 				font-size="10"
 			>{formatWeek(hovered.week_start)}</text>
 			<text
 				x={tipPos.x + ttW / 2}
 				y={tipPos.y + 28}
 				text-anchor="middle"
-				fill={color}
+				style:fill={color}
 				font-size="12"
 				font-weight="600"
 			>{formatValue(hovered.value)}</text>

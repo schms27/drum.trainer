@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { ZoomIn, ZoomOut, Radio } from '@lucide/svelte';
 	import type { NoteEvent } from '$lib/types/track';
 	import type { RecordedHit } from '$lib/types/session';
 	import { GM_GROUP, LANES } from '$lib/drums';
@@ -12,7 +13,6 @@
 	const DOT_R = 5;
 	const MARGIN_TOP = 8;
 	const MARGIN_BOTTOM = 20;
-	const SVG_H = MARGIN_TOP + LANES.length * ROW_H + MARGIN_BOTTOM;
 
 	// Playhead sits 28 % from the left of the track area.
 	const PLAYHEAD_RATIO = 0.28;
@@ -34,10 +34,22 @@
 		timeSigNumerator?: number;
 	} = $props();
 
+	// Only show lanes the track uses, plus any instrument the drummer actually
+	// hits (so stray hits on unused pads stay visible), in kit order.
+	const lanes = $derived(
+		LANES.filter(
+			(lane) =>
+				expectedHits.some((h) => h.instrument === lane) ||
+				actualHits.some((h) => GM_GROUP[h.note_number] === lane)
+		)
+	);
+	const svgH = $derived(MARGIN_TOP + lanes.length * ROW_H + MARGIN_BOTTOM);
+	const laneIndex = (instrument: string) => (lanes as readonly string[]).indexOf(instrument);
+
 	// ── Zoom & scroll state ──────────────────────────────────────────────────
 	let localWindowMs = $state(8000); // visible time window (zoom level)
-	let viewAnchorMs = $state(0);     // time shown at the playhead X position
-	let following = $state(true);     // auto-track the live recording position
+	let viewAnchorMs = $state(0); // time shown at the playhead X position
+	let following = $state(true); // auto-track the live recording position
 
 	// Sync view to live position when following; re-engage on reset.
 	$effect(() => {
@@ -48,31 +60,41 @@
 	let containerEl: HTMLDivElement;
 
 	onMount(() => {
+		// Plain vertical scrolling is left to the page. Only Ctrl+wheel (zoom) and
+		// Shift+wheel / horizontal trackpad swipes (pan) are captured.
 		const handler = (e: WheelEvent) => {
-			e.preventDefault();
 			if (e.ctrlKey) {
-				// Ctrl + scroll → zoom
+				e.preventDefault();
 				const factor = e.deltaY > 0 ? 1.3 : 1 / 1.3;
 				localWindowMs = Math.max(1000, Math.min(40000, localWindowMs * factor));
-			} else {
-				// Scroll → pan (disengage live following)
-				following = false;
-				const msPerPx = localWindowMs / TRACK_W;
-				viewAnchorMs = Math.max(0, viewAnchorMs + e.deltaY * msPerPx * 0.8);
+				return;
 			}
+			const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+			if (!e.shiftKey && !horizontal) return;
+			e.preventDefault();
+			following = false;
+			const delta = horizontal ? e.deltaX : e.deltaY;
+			const msPerPx = localWindowMs / TRACK_W;
+			viewAnchorMs = Math.max(0, viewAnchorMs + delta * msPerPx * 0.8);
 		};
 		containerEl.addEventListener('wheel', handler, { passive: false });
 		return () => containerEl.removeEventListener('wheel', handler);
 	});
 
-	function zoomIn() { localWindowMs = Math.max(1000, localWindowMs / 1.5); }
-	function zoomOut() { localWindowMs = Math.min(40000, localWindowMs * 1.5); }
-	function goLive() { following = true; }
+	function zoomIn() {
+		localWindowMs = Math.max(1000, localWindowMs / 1.5);
+	}
+	function zoomOut() {
+		localWindowMs = Math.min(40000, localWindowMs * 1.5);
+	}
+	function goLive() {
+		following = true;
+	}
 
 	const windowLabel = $derived(
 		localWindowMs >= 10000
-			? `${Math.round(localWindowMs / 1000)}s`
-			: `${(localWindowMs / 1000).toFixed(1)}s`
+			? `${Math.round(localWindowMs / 1000)} s`
+			: `${(localWindowMs / 1000).toFixed(1)} s`
 	);
 
 	// ── Derived window bounds ────────────────────────────────────────────────
@@ -100,7 +122,7 @@
 	const coloredActuals = $derived(
 		actualHits.flatMap((hit) => {
 			const group = GM_GROUP[hit.note_number] ?? '';
-			const li = (LANES as readonly string[]).indexOf(group);
+			const li = laneIndex(group);
 			if (li < 0) return [];
 
 			let bestDelta = Infinity;
@@ -111,13 +133,7 @@
 			}
 
 			const color =
-				bestDelta > 200
-					? '#f87171' // ghost note — no nearby target
-					: bestDelta <= 20
-						? '#4ade80'
-						: bestDelta <= 50
-							? '#facc15'
-							: '#f87171';
+				bestDelta <= 20 ? 'var(--good)' : bestDelta <= 50 ? 'var(--warn)' : 'var(--bad)';
 
 			return [{ time_ms: hit.time_ms, li, color }];
 		})
@@ -156,57 +172,62 @@
 	function rowY(i: number): number {
 		return MARGIN_TOP + i * ROW_H + ROW_H / 2;
 	}
+
+	const iconButton =
+		'w-8 h-8 flex items-center justify-center bg-control hover:bg-control-hover text-fg rounded-lg transition-colors cursor-pointer';
 </script>
 
-<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 overflow-x-auto">
+<div class="bg-card border border-line rounded-xl p-5 overflow-x-auto">
 	<!-- Header with zoom controls and live-follow toggle -->
-	<div class="flex items-center justify-between mb-4">
-		<h3 class="text-sm font-semibold text-zinc-300">Timeline</h3>
+	<div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+		<h3 class="text-sm font-semibold text-fg">What to play</h3>
 		<div class="flex items-center gap-2">
 			<div class="flex items-center gap-1">
-				<button
-					onclick={zoomIn}
-					class="w-7 h-7 flex items-center justify-center bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded text-sm font-bold transition"
-					title="Zoom in"
-				>−</button>
-				<span class="text-xs text-zinc-500 w-9 text-center tabular-nums">{windowLabel}</span>
-				<button
-					onclick={zoomOut}
-					class="w-7 h-7 flex items-center justify-center bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded text-sm font-bold transition"
-					title="Zoom out"
-				>+</button>
+				<button type="button" onclick={zoomOut} class={iconButton} aria-label="Zoom out" title="Zoom out">
+					<ZoomOut size={15} aria-hidden="true" />
+				</button>
+				<span class="text-xs text-fg-subtle w-10 text-center tabular-nums" title="Visible time span">{windowLabel}</span>
+				<button type="button" onclick={zoomIn} class={iconButton} aria-label="Zoom in" title="Zoom in">
+					<ZoomIn size={15} aria-hidden="true" />
+				</button>
 			</div>
 			<button
+				type="button"
 				onclick={goLive}
-				class="px-2.5 py-1 rounded text-xs font-medium transition {following
-					? 'bg-red-950 text-red-400 border border-red-800 cursor-default'
-					: 'bg-zinc-700 hover:bg-zinc-600 text-zinc-400'}"
-				title="Snap to live recording position"
+				aria-pressed={following}
+				class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer
+					{following ? 'bg-bad-soft text-bad' : 'bg-control hover:bg-control-hover text-fg-muted'}"
+				title="Follow the current playing position"
 			>
-				{following ? '● Live' : '↻ Live'}
+				<Radio size={13} aria-hidden="true" />
+				{following ? 'Following' : 'Follow'}
 			</button>
 		</div>
 	</div>
 
+	{#if lanes.length === 0}
+		<p class="text-sm text-fg-subtle">This track has no notes on the standard drum kit instruments.</p>
+	{/if}
+
 	<div bind:this={containerEl} class="select-none">
-		<svg viewBox="0 0 {SVG_W} {SVG_H}" class="w-full min-w-[400px]" aria-label="Live hit timeline">
+		<svg viewBox="0 0 {SVG_W} {svgH}" class="w-full min-w-[400px]" aria-label="Live hit timeline">
 			<defs>
 				<!-- Clip time-positioned content to the track area so it never bleeds into the label column. -->
 				<clipPath id="htl-track-clip">
-					<rect x={LABEL_W} y={0} width={TRACK_W} height={SVG_H} />
+					<rect x={LABEL_W} y={0} width={TRACK_W} height={svgH} />
 				</clipPath>
 			</defs>
 
 			<!-- ── Row backgrounds & labels (not masked so they're always crisp) ── -->
-			{#each LANES as lane, i}
+			{#each lanes as lane, i (lane)}
 				<rect
 					x={0}
 					y={MARGIN_TOP + i * ROW_H}
 					width={SVG_W}
 					height={ROW_H}
-					fill={i % 2 === 0 ? '#27272a' : '#1c1c1e'}
+					style:fill={i % 2 === 0 ? 'var(--chart-row)' : 'var(--chart-row-alt)'}
 				/>
-				<text x={LABEL_W - 8} y={rowY(i) + 4} text-anchor="end" fill="#a1a1aa" font-size="11"
+				<text x={LABEL_W - 8} y={rowY(i) + 4} text-anchor="end" style:fill="var(--fg-muted)" font-size="11"
 					>{lane}</text
 				>
 				<line
@@ -214,12 +235,12 @@
 					y1={MARGIN_TOP + (i + 1) * ROW_H}
 					x2={SVG_W}
 					y2={MARGIN_TOP + (i + 1) * ROW_H}
-					stroke="#3f3f46"
+					style:stroke="var(--chart-grid)"
 				/>
 			{/each}
 
 			<!-- Label-column divider -->
-			<line x1={LABEL_W} y1={0} x2={LABEL_W} y2={SVG_H} stroke="#52525b" />
+			<line x1={LABEL_W} y1={0} x2={LABEL_W} y2={svgH} style:stroke="var(--chart-grid-strong)" />
 
 			<!-- ── All time-positioned content (clipped to track area) ── -->
 			<g clip-path="url(#htl-track-clip)">
@@ -228,44 +249,41 @@
 					x={LABEL_W}
 					y={MARGIN_TOP}
 					width={Math.max(0, playheadX - LABEL_W)}
-					height={LANES.length * ROW_H}
-					fill="#000"
-					opacity="0.2"
+					height={lanes.length * ROW_H}
+					style:fill="var(--chart-past)"
 				/>
 
 				<!-- Beat / bar grid lines -->
-				{#each beatTicks as tick}
+				{#each beatTicks as tick (tick.ms)}
 					{@const x = timeToX(tick.ms)}
 					<line
 						x1={x}
 						y1={MARGIN_TOP}
 						x2={x}
-						y2={MARGIN_TOP + LANES.length * ROW_H}
-						stroke={tick.isBar ? '#52525b' : '#3f3f46'}
+						y2={MARGIN_TOP + lanes.length * ROW_H}
+						style:stroke={tick.isBar ? 'var(--chart-grid-strong)' : 'var(--chart-grid)'}
 						stroke-width={tick.isBar ? 1 : 0.5}
-						opacity={tick.isBar ? 0.9 : 0.5}
 					/>
 				{/each}
 
-				<!-- Target notes — open circles (indigo), same style as results view -->
+				<!-- Target notes — open circles, same style as results view -->
 				{#each visibleExpected as hit}
-					{@const gi = (LANES as readonly string[]).indexOf(hit.instrument)}
+					{@const gi = laneIndex(hit.instrument)}
 					{#if gi >= 0}
 						<circle
 							cx={timeToX(hit.time_ms)}
 							cy={rowY(gi)}
 							r={DOT_R}
 							fill="none"
-							stroke="#6366f1"
+							style:stroke="var(--chart-target)"
 							stroke-width="1.5"
-							opacity="0.7"
 						/>
 					{/if}
 				{/each}
 
 				<!-- Actual hits — filled circles, coloured by timing accuracy -->
 				{#each visibleActuals as hit}
-					<circle cx={timeToX(hit.time_ms)} cy={rowY(hit.li)} r={DOT_R - 1} fill={hit.color} opacity="0.9" />
+					<circle cx={timeToX(hit.time_ms)} cy={rowY(hit.li)} r={DOT_R - 1} style:fill={hit.color} />
 				{/each}
 
 				<!-- Playhead -->
@@ -273,42 +291,37 @@
 					x1={playheadX}
 					y1={MARGIN_TOP}
 					x2={playheadX}
-					y2={MARGIN_TOP + LANES.length * ROW_H}
-					stroke="#ef4444"
+					y2={MARGIN_TOP + lanes.length * ROW_H}
+					style:stroke="var(--bad-solid)"
 					stroke-width="1.5"
-					opacity="0.85"
 				/>
 				<polygon
 					points="{playheadX - 4},{MARGIN_TOP} {playheadX + 4},{MARGIN_TOP} {playheadX},{MARGIN_TOP + 8}"
-					fill="#ef4444"
-					opacity="0.85"
+					style:fill="var(--bad-solid)"
 				/>
 			</g>
 		</svg>
 	</div>
 
 	<!-- Legend — mirrors the results view -->
-	<div class="flex flex-wrap gap-5 mt-3 text-xs text-zinc-500 justify-center">
-		<span>
-			<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-				<circle cx="5" cy="5" r="4" fill="none" stroke="#6366f1" stroke-width="1.5" />
-			</svg>Target
+	<div class="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-xs text-fg-muted justify-center">
+		<span class="inline-flex items-center gap-1">
+			<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true">
+				<circle cx="5" cy="5" r="4" fill="none" style:stroke="var(--chart-target)" stroke-width="1.5" />
+			</svg>Note to play
 		</span>
-		<span>
-			<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-				<circle cx="5" cy="5" r="3" fill="#4ade80" />
-			</svg>Hit (±20 ms)
+		<span class="inline-flex items-center gap-1">
+			<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" style:fill="var(--good)" /></svg
+			>On time (within 20 ms)
 		</span>
-		<span>
-			<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-				<circle cx="5" cy="5" r="3" fill="#facc15" />
-			</svg>Hit (±50 ms)
+		<span class="inline-flex items-center gap-1">
+			<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" style:fill="var(--warn)" /></svg
+			>Close (within 50 ms)
 		</span>
-		<span>
-			<svg class="inline w-3 h-3 mr-1" viewBox="0 0 10 10">
-				<circle cx="5" cy="5" r="3" fill="#f87171" />
-			</svg>Late / Early / Ghost
+		<span class="inline-flex items-center gap-1">
+			<svg class="w-3 h-3" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" style:fill="var(--bad)" /></svg
+			>Early, late or extra
 		</span>
 	</div>
-	<p class="text-xs text-zinc-600 mt-2 text-center">Scroll to pan · Ctrl+scroll to zoom</p>
+	<p class="text-xs text-fg-subtle mt-2 text-center">Shift + scroll to move along the track · Ctrl + scroll to zoom</p>
 </div>

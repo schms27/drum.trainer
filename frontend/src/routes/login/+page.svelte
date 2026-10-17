@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { loginUrl } from '$lib/api/auth';
+	import { Drum } from '@lucide/svelte';
+	import '$lib/theme.svelte';
 
 	const errorMessages: Record<string, string> = {
 		state_mismatch: 'Login attempt expired or was tampered with. Please try again.',
@@ -17,16 +19,16 @@
 
 <svelte:head><title>Sign in — Drum Trainer</title></svelte:head>
 
-<div class="min-h-screen bg-zinc-950 flex items-center justify-center px-4">
+<div class="min-h-screen bg-canvas flex items-center justify-center px-4">
 	<div class="w-full max-w-sm">
 		<div class="text-center mb-8">
-			<span class="text-5xl">🥁</span>
-			<h1 class="text-2xl font-bold text-white mt-4">Drum Trainer</h1>
-			<p class="text-zinc-400 text-sm mt-2">Sign in to track your practice sessions</p>
+			<Drum size={48} class="mx-auto text-accent-text" aria-hidden="true" />
+			<h1 class="text-2xl font-bold text-fg mt-4">Drum Trainer</h1>
+			<p class="text-fg-muted text-sm mt-2">Practise along with MIDI drum tracks on your e-drum kit and see how accurately you play.</p>
 		</div>
 
 		{#if errorMessage}
-			<div class="mb-6 bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3">
+			<div class="mb-6 bg-bad-soft text-fg text-sm rounded-lg px-4 py-3" role="alert">
 				{errorMessage}
 			</div>
 		{/if}
@@ -34,7 +36,7 @@
 		<div class="flex flex-col gap-3">
 			<a
 				href={loginUrl('google')}
-				class="flex items-center justify-center gap-3 bg-white hover:bg-zinc-100 text-zinc-900 font-medium rounded-lg px-4 py-3 transition"
+				class="flex items-center justify-center gap-3 bg-white hover:bg-zinc-100 text-zinc-900 border border-line font-medium rounded-lg px-4 py-3 transition"
 			>
 				<svg class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
 					<path
@@ -59,7 +61,7 @@
 
 			<a
 				href={loginUrl('github')}
-				class="flex items-center justify-center gap-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-white font-medium rounded-lg px-4 py-3 transition"
+				class="flex items-center justify-center gap-3 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-lg px-4 py-3 transition"
 			>
 				<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
 					<path
@@ -69,5 +71,6 @@
 				Continue with GitHub
 			</a>
 		</div>
+		<p class="text-center text-xs text-fg-subtle mt-6">Recording needs Chrome or Edge and an e-drum kit connected by USB.</p>
 	</div>
 </div>

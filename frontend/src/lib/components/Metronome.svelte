@@ -1,35 +1,38 @@
 <script lang="ts">
+	import { Minus, Plus, RotateCcw, Square, Timer } from '@lucide/svelte';
 	import { createMetronome, type Metronome } from '$lib/midi/metronome';
 
 	let {
 		initialBpm = 120,
 		trackBpm = undefined,
+		beatsPerBar = 4,
 		onBpmChange = undefined,
 		onMetronomeChange = undefined
 	}: {
 		initialBpm?: number;
 		/** Native tempo of the track — shown as reference, enables reset button. */
 		trackBpm?: number;
+		/** Beats per bar (time signature numerator) — sets the accent and beat lights. */
+		beatsPerBar?: number;
 		/** Called whenever the user changes the BPM. */
 		onBpmChange?: (bpm: number) => void;
 		/** Called with the live Metronome instance when started, null when stopped. */
 		onMetronomeChange?: (m: Metronome | null) => void;
 	} = $props();
 
+	// svelte-ignore state_referenced_locally
 	let bpm = $state(Math.round(initialBpm));
 	let playing = $state(false);
 	let activeBeat = $state(-1);
-
 	let metronome: Metronome | null = null;
 
 	const nativeBpm = $derived(trackBpm !== undefined ? Math.round(trackBpm) : undefined);
 	const isModified = $derived(nativeBpm !== undefined && bpm !== nativeBpm);
+	const speedPct = $derived(nativeBpm ? Math.round((bpm / nativeBpm) * 100) : 100);
 
 	function onBeat(beatIndex: number) {
 		activeBeat = beatIndex;
-		setTimeout(() => {
-			activeBeat = -1;
-		}, 80);
+		setTimeout(() => (activeBeat = -1), 80);
 	}
 
 	function toggle() {
@@ -40,7 +43,7 @@
 			activeBeat = -1;
 			onMetronomeChange?.(null);
 		} else {
-			metronome = createMetronome(bpm, { onBeat });
+			metronome = createMetronome(bpm, { onBeat, beatsPerBar });
 			metronome.start();
 			playing = true;
 			onMetronomeChange?.(metronome);
@@ -57,73 +60,86 @@
 		const val = parseInt((e.target as HTMLInputElement).value, 10);
 		if (!isNaN(val)) applyBpm(val);
 	}
-
-	function nudge(delta: number) {
-		applyBpm(bpm + delta);
-	}
-
-	function reset() {
-		if (nativeBpm !== undefined) applyBpm(nativeBpm);
-	}
 </script>
 
-<div class="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 flex items-center gap-5 flex-wrap">
-	<!-- Toggle -->
-	<button
-		onclick={toggle}
-		class="px-3 py-1.5 rounded-lg text-sm font-medium transition min-w-[110px] text-center
-			   {playing
-			? 'bg-amber-600 hover:bg-amber-500 text-white'
-			: 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'}"
-	>
-		{playing ? '⏹ Stop' : '♩ Metronome'}
-	</button>
-
-	<!-- Beat dots -->
-	<div class="flex gap-2">
-		{#each { length: 4 } as _, i}
-			<div
-				class="w-3 h-3 rounded-full transition-colors duration-75
-					   {activeBeat === i
-					? i === 0
-						? 'bg-amber-400'
-						: 'bg-white'
-					: 'bg-zinc-600'}"
-			></div>
-		{/each}
+<div class="flex flex-wrap items-center gap-x-6 gap-y-4">
+	<!-- Tempo -->
+	<div class="flex items-center gap-2">
+		<button
+			type="button"
+			onclick={() => applyBpm(bpm - 1)}
+			aria-label="Slower"
+			class="w-9 h-9 rounded-lg bg-control hover:bg-control-hover text-fg flex items-center justify-center cursor-pointer"
+		>
+			<Minus size={16} aria-hidden="true" />
+		</button>
+		<label class="flex items-baseline gap-1.5">
+			<span class="sr-only">Practice tempo in BPM</span>
+			<input
+				type="number"
+				min="20"
+				max="300"
+				value={bpm}
+				oninput={handleBpmInput}
+				class="w-16 h-9 text-center bg-control border border-line rounded-lg text-fg text-base font-mono tabular-nums
+					focus:outline-none focus:ring-2 focus:ring-accent
+					[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+			/>
+			<span class="text-sm text-fg-muted">BPM</span>
+		</label>
+		<button
+			type="button"
+			onclick={() => applyBpm(bpm + 1)}
+			aria-label="Faster"
+			class="w-9 h-9 rounded-lg bg-control hover:bg-control-hover text-fg flex items-center justify-center cursor-pointer"
+		>
+			<Plus size={16} aria-hidden="true" />
+		</button>
 	</div>
 
-	<!-- BPM control -->
-	<div class="flex items-center gap-2 ml-auto">
-		<button
-			onclick={() => nudge(-1)}
-			class="w-7 h-7 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-300 text-base leading-none transition flex items-center justify-center"
-		>−</button>
-		<input
-			type="number"
-			min="20"
-			max="300"
-			value={bpm}
-			oninput={handleBpmInput}
-			class="w-14 text-center bg-zinc-700 border border-zinc-600 rounded px-1 py-1
-				   text-white text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500
-				   [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-		/>
-		<button
-			onclick={() => nudge(1)}
-			class="w-7 h-7 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-300 text-base leading-none transition flex items-center justify-center"
-		>+</button>
-		<span class="text-zinc-400 text-xs">BPM</span>
-
-		{#if nativeBpm !== undefined}
-			<span class="text-zinc-600 text-xs ml-1">♩={nativeBpm}</span>
+	{#if nativeBpm !== undefined}
+		<div class="flex items-center gap-2 text-sm">
+			<span class="text-fg-muted">
+				{#if isModified}
+					{speedPct}% of the original {nativeBpm} BPM
+				{:else}
+					Original tempo
+				{/if}
+			</span>
 			{#if isModified}
 				<button
-					onclick={reset}
-					title="Reset to track tempo"
-					class="text-zinc-500 hover:text-amber-400 text-xs transition"
-				>↺</button>
+					type="button"
+					onclick={() => applyBpm(nativeBpm)}
+					class="inline-flex items-center gap-1 text-accent-text hover:underline cursor-pointer"
+				>
+					<RotateCcw size={13} aria-hidden="true" /> Reset
+				</button>
 			{/if}
-		{/if}
+		</div>
+	{/if}
+
+	<!-- Metronome -->
+	<div class="flex items-center gap-3 sm:ml-auto">
+		<div class="flex gap-1.5" aria-hidden="true">
+			{#each { length: beatsPerBar } as _, i}
+				<div
+					class="w-2.5 h-2.5 rounded-full transition-colors duration-75
+						{activeBeat === i ? (i === 0 ? 'bg-warn-solid' : 'bg-fg') : 'bg-control-hover'}"
+				></div>
+			{/each}
+		</div>
+		<button
+			type="button"
+			onclick={toggle}
+			aria-pressed={playing}
+			class="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer
+				{playing ? 'bg-warn-solid text-white hover:opacity-90' : 'bg-control text-fg hover:bg-control-hover'}"
+		>
+			{#if playing}
+				<Square size={14} aria-hidden="true" /> Stop click
+			{:else}
+				<Timer size={14} aria-hidden="true" /> Metronome
+			{/if}
+		</button>
 	</div>
 </div>

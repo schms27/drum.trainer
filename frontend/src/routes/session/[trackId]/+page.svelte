@@ -10,10 +10,15 @@
 	import { setPracticeBpm } from '$lib/api/tracks';
 	import { pilotAudioUrl } from '$lib/api/pilots';
 	import { PilotPlayer } from '$lib/audio/PilotPlayer';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import Notice from '$lib/components/ui/Notice.svelte';
+	import { INSTRUMENTS } from '$lib/drums';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	// svelte-ignore state_referenced_locally
 	const { track, pilots } = data;
 
 	let pilotPlayer = $state<PilotPlayer | null>(null);
@@ -97,11 +102,9 @@
 		return `${m}:${String(s).padStart(2, '0')}`;
 	}
 
-	const noteCounts = $derived(
-		track.notes.reduce<Record<string, number>>((acc, n) => {
-			acc[n.instrument] = (acc[n.instrument] ?? 0) + 1;
-			return acc;
-		}, {})
+	// Instruments used by the track, in kit order, for the page subtitle.
+	const instrumentsUsed = (INSTRUMENTS as readonly string[]).filter((i) =>
+		track.notes.some((n) => n.instrument === i)
 	);
 
 	async function handleFinished(hits: RecordedHit[], startedAt: string, endedAt: string) {
@@ -129,76 +132,61 @@
 
 <svelte:head><title>{track.name} — Drum Trainer</title></svelte:head>
 
-<div class="flex flex-col gap-8">
-	<!-- Track info -->
-	<div>
-		<a href="/" class="text-zinc-500 hover:text-zinc-300 text-sm transition">← Back to tracks</a>
-		<div class="flex items-start justify-between mt-2 gap-4">
-			<div>
-				<h1 class="text-2xl font-bold text-white">{track.name}</h1>
-				<p class="text-zinc-400 text-sm mt-1">
-					{track.note_count} notes · {formatDuration(track.duration_ms)} · {track.filename}
-				</p>
-			</div>
-			<PlayButton hits={track.notes} label="Preview Track" metronome={activeMetronome} speed={previewSpeed} />
-		</div>
-	</div>
+<PageHeader
+	title={track.name}
+	subtitle="{formatDuration(track.duration_ms)} · {Math.round(track.bpm)} BPM · {track.note_count} notes · {instrumentsUsed.join(', ')}"
+	back={{ href: '/', label: 'Library' }}
+>
+	{#snippet actions()}
+		<PlayButton hits={track.notes} label="Listen to track" metronome={activeMetronome} speed={previewSpeed} />
+	{/snippet}
+</PageHeader>
 
-	<!-- Device selector -->
-	<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 max-w-sm">
+<div class="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+	<Card title="1. Connect your kit" description="Your e-drum kit, connected by USB.">
 		<MidiDeviceSelector bind:selectedId={selectedDeviceId} />
-	</div>
+	</Card>
 
-	<!-- Metronome -->
-	<Metronome
-		initialBpm={track.practice_bpm ?? track.bpm}
-		trackBpm={track.bpm}
-		onBpmChange={handleBpmChange}
-		onMetronomeChange={(m) => (activeMetronome = m)}
-	/>
+	<Card title="2. Choose your tempo" description="Practise slower first — your score is adjusted to the tempo you pick.">
+		<Metronome
+			initialBpm={track.practice_bpm ?? track.bpm}
+			trackBpm={track.bpm}
+			beatsPerBar={track.time_sig_numerator}
+			onBpmChange={handleBpmChange}
+			onMetronomeChange={(m) => (activeMetronome = m)}
+		/>
+	</Card>
+</div>
 
-	<!-- Pilot tracks -->
-	{#if pilots.length > 0}
+{#if pilots.length > 0}
+	<Card title="Backing tracks" description="Audio that plays along while you record.">
 		<PilotControls {pilots} player={pilotPlayer} ready={pilotsReady} />
 		{#if pilotLoadError}
-			<p class="text-red-400 text-sm -mt-4">{pilotLoadError}</p>
+			<div class="mt-3"><Notice variant="error">{pilotLoadError}</Notice></div>
 		{/if}
+	</Card>
+{/if}
+
+<section class="flex flex-col gap-4" aria-labelledby="record-heading">
+	<h2 id="record-heading" class="text-lg font-semibold text-fg">3. Record</h2>
+	{#if submitError}
+		<Notice variant="error">Your take could not be saved: {submitError}</Notice>
 	{/if}
-
-	<!-- Recording controls + live feed -->
-	<div>
-		<h2 class="text-lg font-semibold text-white mb-4">Recording</h2>
-		{#if submitting}
-			<p class="text-zinc-400 text-sm animate-pulse">Calculating your score…</p>
-		{:else}
-			<RecordingControls
-				deviceId={selectedDeviceId}
-				onFinished={handleFinished}
-				onRecordingStart={handleRecordingStart}
-				onFirstHit={handleFirstHit}
-				onRecordingStop={handleRecordingStop}
-				expectedHits={track.notes}
-				timeScale={track.bpm / currentBpm}
-				bpm={track.bpm}
-				timeSigNumerator={track.time_sig_numerator}
-				durationMs={track.duration_ms}
-				firstHitTimeMs={firstTargetMs * (track.bpm / currentBpm)}
-			/>
-		{/if}
-		{#if submitError}
-			<p class="text-red-400 text-sm mt-3">{submitError}</p>
-		{/if}
-	</div>
-
-	<!-- Track overview (note count per instrument) -->
-	<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-		<h3 class="text-sm font-semibold text-zinc-300 mb-3">Target Track Contents</h3>
-		<div class="flex flex-wrap gap-3 text-sm">
-			{#each Object.entries(noteCounts).sort((a, b) => b[1] - a[1]) as [instr, count]}
-				<span class="bg-zinc-700 text-zinc-300 rounded-full px-3 py-1">
-					{instr}: {count}
-				</span>
-			{/each}
-		</div>
-	</div>
-</div>
+	{#if submitting}
+		<div class="bg-card border border-line rounded-xl p-5 text-sm text-fg-muted" role="status">Scoring your take…</div>
+	{:else}
+	<RecordingControls
+		deviceId={selectedDeviceId}
+		onFinished={handleFinished}
+		onRecordingStart={handleRecordingStart}
+		onFirstHit={handleFirstHit}
+		onRecordingStop={handleRecordingStop}
+		expectedHits={track.notes}
+		timeScale={track.bpm / currentBpm}
+		bpm={track.bpm}
+		timeSigNumerator={track.time_sig_numerator}
+		durationMs={track.duration_ms}
+		firstHitTimeMs={firstTargetMs * (track.bpm / currentBpm)}
+	/>
+	{/if}
+</section>

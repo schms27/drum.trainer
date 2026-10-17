@@ -1,52 +1,47 @@
 <script lang="ts">
 	import type { ScoreResult } from '$lib/types/session';
+	import {
+		describeTiming,
+		formatOffset,
+		formatPercent,
+		hitRateTone,
+		timingTone,
+		toneText
+	} from '$lib/score-format';
 
 	let { score }: { score: ScoreResult } = $props();
 
-	function pct(v: number) {
-		return (v * 100).toFixed(1) + '%';
-	}
-
-	function offsetLabel(ms: number) {
-		if (Math.abs(ms) < 0.5) return '±0 ms';
-		return (ms > 0 ? '+' : '') + ms.toFixed(1) + ' ms';
-	}
-
-	function offsetColor(ms: number) {
-		const abs = Math.abs(ms);
-		if (abs <= 20) return 'text-green-400';
-		if (abs <= 50) return 'text-yellow-400';
-		return 'text-red-400';
-	}
-
-	function hitRateColor(r: number) {
-		if (r >= 0.9) return 'text-green-400';
-		if (r >= 0.7) return 'text-yellow-400';
-		return 'text-red-400';
-	}
+	const targetCount = $derived(score.by_instrument.reduce((n, b) => n + b.target_count, 0));
+	const matchedCount = $derived(score.by_instrument.reduce((n, b) => n + b.matched_count, 0));
+	const extraCount = $derived(score.ghost_hits?.length ?? 0);
 </script>
 
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-	<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
-		<p class="text-zinc-400 text-xs uppercase tracking-wider mb-1">Hit Rate</p>
-		<p class="text-3xl font-bold {hitRateColor(score.hit_rate)}">{pct(score.hit_rate)}</p>
-	</div>
-	<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
-		<p class="text-zinc-400 text-xs uppercase tracking-wider mb-1">Avg Timing</p>
-		<p class="text-3xl font-bold {offsetColor(score.avg_offset_ms)}">
-			{offsetLabel(score.avg_offset_ms)}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+	<div class="bg-card border border-line rounded-xl p-5">
+		<p class="text-xs font-medium text-fg-muted">Notes hit</p>
+		<p class="text-3xl font-bold mt-1 tabular-nums {toneText[hitRateTone(score.hit_rate)]}">
+			{formatPercent(score.hit_rate)}
 		</p>
-		<p class="text-zinc-500 text-xs mt-1">
-			{score.avg_offset_ms < 0 ? 'playing early' : score.avg_offset_ms > 0 ? 'playing late' : 'perfect'}
+		<p class="text-xs text-fg-subtle mt-1">{matchedCount} of {targetCount} notes</p>
+	</div>
+
+	<div class="bg-card border border-line rounded-xl p-5">
+		<p class="text-xs font-medium text-fg-muted">Average timing</p>
+		<p class="text-3xl font-bold mt-1 tabular-nums {toneText[timingTone(score.avg_offset_ms)]}">
+			{formatOffset(score.avg_offset_ms)}
 		</p>
+		<p class="text-xs text-fg-subtle mt-1">{describeTiming(score.avg_offset_ms)}</p>
 	</div>
-	<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
-		<p class="text-zinc-400 text-xs uppercase tracking-wider mb-1">Consistency</p>
-		<p class="text-3xl font-bold text-white">±{score.std_offset_ms.toFixed(1)} ms</p>
-		<p class="text-zinc-500 text-xs mt-1">std deviation</p>
+
+	<div class="bg-card border border-line rounded-xl p-5">
+		<p class="text-xs font-medium text-fg-muted">Timing spread</p>
+		<p class="text-3xl font-bold mt-1 tabular-nums text-fg">±{Math.round(score.std_offset_ms)} ms</p>
+		<p class="text-xs text-fg-subtle mt-1">How much your timing varies — lower is steadier</p>
 	</div>
-	<div class="bg-zinc-800 border border-zinc-700 rounded-xl p-5 text-center">
-		<p class="text-zinc-400 text-xs uppercase tracking-wider mb-1">Ghost Notes</p>
-		<p class="text-3xl font-bold text-zinc-300">{pct(score.ghost_rate)}</p>
+
+	<div class="bg-card border border-line rounded-xl p-5">
+		<p class="text-xs font-medium text-fg-muted">Extra hits</p>
+		<p class="text-3xl font-bold mt-1 tabular-nums text-fg">{extraCount}</p>
+		<p class="text-xs text-fg-subtle mt-1">Hits with no matching note in the track</p>
 	</div>
 </div>

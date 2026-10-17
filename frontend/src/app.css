@@ -1,1 +1,126 @@
 @import 'tailwindcss';
+
+/*
+ * Semantic design tokens.
+ *
+ * Components use these names (bg-card, text-fg-muted, border-line, …) instead
+ * of raw palette colours, so a single [data-theme] attribute on <html>
+ * switches the whole app between light and dark. The attribute is set before
+ * first paint by the inline script in app.html (see $lib/theme.svelte.ts).
+ *
+ * Charts (SVG) read the same variables via style:fill / style:stroke.
+ */
+@theme inline {
+	--color-canvas: var(--canvas);
+	--color-panel: var(--panel);
+	--color-card: var(--card);
+	--color-control: var(--control);
+	--color-control-hover: var(--control-hover);
+	--color-line: var(--line);
+	--color-line-strong: var(--line-strong);
+	--color-line-subtle: var(--line-subtle);
+
+	--color-fg: var(--fg);
+	--color-fg-muted: var(--fg-muted);
+	--color-fg-subtle: var(--fg-subtle);
+
+	--color-accent: var(--accent);
+	--color-accent-hover: var(--accent-hover);
+	--color-accent-fg: var(--accent-fg);
+	--color-accent-text: var(--accent-text);
+	--color-accent-soft: var(--accent-soft);
+
+	--color-good: var(--good);
+	--color-warn: var(--warn);
+	--color-bad: var(--bad);
+	--color-good-solid: var(--good-solid);
+	--color-warn-solid: var(--warn-solid);
+	--color-bad-solid: var(--bad-solid);
+	--color-bad-soft: var(--bad-soft);
+	--color-warn-soft: var(--warn-soft);
+}
+
+/* Light theme (default before the theme script runs). */
+:root {
+	color-scheme: light;
+
+	--canvas: #f4f4f5;
+	--panel: #ffffff;
+	--card: #ffffff;
+	--control: #e4e4e7;
+	--control-hover: #d4d4d8;
+	--line: #e4e4e7;
+	--line-strong: #d4d4d8;
+	--line-subtle: #f4f4f5;
+
+	--fg: #18181b;
+	--fg-muted: #52525b;
+	--fg-subtle: #71717a;
+
+	--accent: #4f46e5;
+	--accent-hover: #4338ca;
+	--accent-fg: #ffffff;
+	--accent-text: #4f46e5;
+	--accent-soft: #eef2ff;
+
+	--good: #15803d;
+	--warn: #a16207;
+	--bad: #dc2626;
+	--good-solid: #16a34a;
+	--warn-solid: #d97706;
+	--bad-solid: #dc2626;
+	--bad-soft: #fee2e2;
+	--warn-soft: #fef3c7;
+
+	/* Chart-only colours. */
+	--chart-row: #fafafa;
+	--chart-row-alt: #f4f4f5;
+	--chart-grid: #e4e4e7;
+	--chart-grid-strong: #d4d4d8;
+	--chart-past: rgb(0 0 0 / 0.04);
+	--chart-target: #6366f1;
+}
+
+[data-theme='dark'] {
+	color-scheme: dark;
+
+	--canvas: #09090b;
+	--panel: #18181b;
+	--card: #27272a;
+	--control: #3f3f46;
+	--control-hover: #52525b;
+	--line: #3f3f46;
+	--line-strong: #52525b;
+	--line-subtle: #27272a;
+
+	--fg: #fafafa;
+	--fg-muted: #a1a1aa;
+	--fg-subtle: #8b8b94;
+
+	--accent: #4f46e5;
+	--accent-hover: #6366f1;
+	--accent-fg: #ffffff;
+	--accent-text: #818cf8;
+	--accent-soft: rgb(99 102 241 / 0.15);
+
+	--good: #4ade80;
+	--warn: #facc15;
+	--bad: #f87171;
+	--good-solid: #16a34a;
+	--warn-solid: #d97706;
+	--bad-solid: #dc2626;
+	--bad-soft: rgb(220 38 38 / 0.18);
+	--warn-soft: rgb(217 119 6 / 0.18);
+
+	--chart-row: #27272a;
+	--chart-row-alt: #1c1c1e;
+	--chart-grid: #3f3f46;
+	--chart-grid-strong: #52525b;
+	--chart-past: rgb(0 0 0 / 0.2);
+	--chart-target: #818cf8;
+}
+
+body {
+	background: var(--canvas);
+	color: var(--fg);
+}

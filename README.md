@@ -1,14 +1,15 @@
 # drum.trainer
 
-A web app for drummers to practice along with MIDI tracks and get scored on timing accuracy. Upload a MIDI file, connect your e-drum kit via USB, record a take, and see a detailed breakdown of hit rate, timing offset, and ghost notes per instrument.
+A web app for drummers to practice along with MIDI tracks and get scored on timing accuracy. Upload a MIDI file, connect your e-drum kit via USB, record a take, and see which notes you hit, missed, or played early or late, per instrument.
 
 
 ## Features
 
 - Upload standard MIDI files as practice targets
 - Record live MIDI input from any e-drum kit or controller
-- Per-instrument scoring: hit rate, timing offset, consistency, ghost notes
-- Pilot tracks — upload audio files (WAV, MP3) that play back in sync with your first hit at any practice tempo
+- Per-instrument scoring: notes hit, average timing, timing spread, extra hits
+- Backing tracks — upload audio files (WAV, MP3) that play back in sync with your first hit at any practice tempo
+- Light and dark theme (follows your system setting, or choose one)
 - Adjustable practice tempo with automatic time-scaling
 - Session history and weekly practice statistics
 - Sign in with Google or GitHub
@@ -108,7 +109,7 @@ Point your external reverse proxy at port `9980`. The app will be available at t
 | `GITHUB_CLIENT_ID` | No | — | GitHub OAuth client ID. |
 | `GITHUB_CLIENT_SECRET` | No | — | GitHub OAuth client secret. |
 | `MAX_UPLOAD_SIZE_MB` | No | `16` | Maximum MIDI file upload size in MB. |
-| `MAX_PILOT_SIZE_MB` | No | `150` | Maximum pilot audio file upload size in MB. |
+| `MAX_PILOT_SIZE_MB` | No | `150` | Maximum backing track (audio) upload size in MB. |
 | `MAX_SESSION_HITS` | No | `20000` | Maximum number of recorded hits accepted per session submission. |
 | `DEV_MODE` | No | `false` | Set to `true` for local HTTP development. Disables the `Secure` flag on session cookies. |
 
