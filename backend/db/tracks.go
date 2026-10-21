@@ -213,6 +213,49 @@ func SetPracticeBPM(db *DB, trackID, userID int64, bpm *float64) error {
 	return nil
 }
 
+// ReplaceTrackNotes swaps a track's notes for an edited set, updates its note
+// count and duration, and bumps its notes revision, returning the new one.
+// Editing a shared track is logged as a share event, so the attestation trail
+// shows that the shared content changed. Returns sql.ErrNoRows if the track
+// isn't the user's.
+func ReplaceTrackNotes(db *DB, trackID, userID int64, notes []models.NoteEvent, durationMs float64) (int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	var revision int
+	var visibility string
+	err = tx.QueryRow(db.Rebind(`UPDATE tracks SET note_count = ?, duration_ms = ?, notes_revision = notes_revision + 1
+		WHERE id = ? AND user_id = ? RETURNING notes_revision, visibility`),
+		len(notes), durationMs, trackID, userID,
+	).Scan(&revision, &visibility)
+	if err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(db.Rebind(`DELETE FROM track_notes WHERE track_id = ?`), trackID); err != nil {
+		return 0, fmt.Errorf("delete notes: %w", err)
+	}
+	stmt, err := tx.Prepare(db.Rebind(`INSERT INTO track_notes (track_id, note_number, time_ms, velocity, instrument)
+		VALUES (?, ?, ?, ?, ?)`))
+	if err != nil {
+		return 0, fmt.Errorf("prepare note insert: %w", err)
+	}
+	defer stmt.Close()
+	for _, n := range notes {
+		if _, err := stmt.Exec(trackID, n.NoteNumber, n.TimeMs, n.Velocity, n.Instrument); err != nil {
+			return 0, fmt.Errorf("insert note: %w", err)
+		}
+	}
+	if visibility != models.VisibilityPrivate {
+		if err := insertShareEvent(db, tx, trackID, userID, visibility, ShareEvent{Action: "edit_notes"}); err != nil {
+			return 0, err
+		}
+	}
+	return revision, tx.Commit()
+}
+
 // PilotVolume is the saved level of one backing track.
 type PilotVolume struct {
 	ID     int64    `json:"id"`
@@ -245,7 +288,7 @@ func SetTrackMix(db *DB, trackID, userID int64, metronome *float64, pilots []Pil
 }
 
 // trackColumns is the column list scanTrack expects, in order.
-const trackColumns = `id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, metronome_volume, created_at,
+const trackColumns = `id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, metronome_volume, notes_revision, created_at,
 	visibility, share_token, rights_basis, source_track_id, origin_track_id IS NOT NULL, disabled_at IS NOT NULL, disabled_reason`
 
 func scanTrack(s scanner) (*models.Track, error) {
@@ -256,7 +299,7 @@ func scanTrack(s scanner) (*models.Track, error) {
 	var sourceID sql.NullInt64
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
-		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &metronomeVolume, &ct,
+		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &metronomeVolume, &t.NotesRevision, &ct,
 		&t.Visibility, &shareToken, &rightsBasis, &sourceID, &t.Copied, &t.Disabled, &disabledReason,
 	)
 	if err != nil {

@@ -44,6 +44,11 @@ const NOTE_NAMES: Readonly<Record<number, string>> = {
 	41: 'Tom (floor)'
 };
 
+/** Note numbers that have a name, ascending. */
+export const NAMED_NOTES: readonly number[] = Object.keys(NOTE_NAMES)
+	.map(Number)
+	.sort((a, b) => a - b);
+
 /** Human-readable name for a MIDI note from a drum kit. */
 export function noteLabel(note: number): string {
 	return NOTE_NAMES[note] ?? `Note ${note}`;

@@ -49,6 +49,8 @@ export interface SessionTempo {
 }
 
 export interface Session extends SessionTempo {
+	/** Notes revision of the track the take was played against; null for older takes. */
+	notes_revision: number | null;
 	id: number;
 	track_id: number;
 	started_at: string;
@@ -59,6 +61,7 @@ export interface Session extends SessionTempo {
 }
 
 export interface SessionSummary extends SessionTempo {
+	notes_revision: number | null;
 	id: number;
 	track_id: number;
 	hit_count: number;

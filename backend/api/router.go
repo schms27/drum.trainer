@@ -79,6 +79,7 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 			r.Get("/tracks/{id}", th.get)
 			r.Delete("/tracks/{id}", th.delete)
 			r.Patch("/tracks/{id}/practice-bpm", th.setPracticeBPM)
+			r.Put("/tracks/{id}/notes", th.replaceNotes)
 			r.Get("/tracks/{id}/mapping", th.getMapping)
 			r.Put("/tracks/{id}/mapping", th.updateMapping)
 			r.Put("/tracks/{id}/mix", th.setMix)

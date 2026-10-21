@@ -32,7 +32,7 @@ var ErrBlockedContent = errors.New("this track matches one that was removed afte
 
 // ShareEvent records who changed a track's sharing, and what they attested to.
 type ShareEvent struct {
-	Action      string // "share" | "rotate" | "unshare"
+	Action      string // "share" | "rotate" | "unshare" | "edit_notes"
 	Visibility  string // for "share": models.VisibilityUnlisted (default) or VisibilityPublic
 	RightsBasis string
 	TermsVer    string

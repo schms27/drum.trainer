@@ -139,6 +139,8 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		DurationMs: float64(endedAt.Sub(startedAt).Milliseconds()),
 		HitCount:   len(req.Hits),
 	}
+	revision := track.NotesRevision
+	session.NotesRevision = &revision
 	if req.PracticeBPM != nil {
 		trackBPM := track.BPM
 		session.SessionTempo = models.NewSessionTempo(req.PracticeBPM, &trackBPM)

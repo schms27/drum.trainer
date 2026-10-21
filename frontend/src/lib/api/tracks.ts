@@ -50,6 +50,18 @@ export async function uploadTrack(
 	});
 }
 
+/** Replaces the track's notes with an edited set. durationMs sets a new length. */
+export async function replaceTrackNotes(
+	trackId: number,
+	notes: { note_number: number; time_ms: number; velocity: number }[],
+	durationMs?: number
+): Promise<TrackWithNotes> {
+	return apiFetch<TrackWithNotes>(`/tracks/${trackId}/notes`, {
+		method: 'PUT',
+		body: JSON.stringify({ notes, duration_ms: durationMs })
+	});
+}
+
 /** The MIDI file as uploaded. Only for the owner's own, non-copied tracks. */
 export function trackFileUrl(trackId: number): string {
 	return `/api/v1/tracks/${trackId}/file`;
