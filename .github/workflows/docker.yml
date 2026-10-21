@@ -1,7 +1,7 @@
 name: Build and push Docker images
 
-# Every push to main publishes `latest` images. A manually pushed v* tag also
-# builds versioned images, but the normal way to release is release.yml.
+# Every push to main publishes `latest` images. Every v* tag builds versioned
+# images; release.yml pushes its tag in a way that triggers this workflow.
 on:
   push:
     branches: ['main']

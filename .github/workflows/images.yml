@@ -2,9 +2,10 @@ name: Build images
 
 # Reusable workflow: builds and pushes the backend and frontend images.
 #
-# Called by docker.yml for pushes to main (tags: latest, <sha>) and by
-# release.yml for releases (tags: 1.2.3, 1.2, 1, <sha>). Releases pass the tag
-# as `ref` because a tag pushed with GITHUB_TOKEN does not trigger docker.yml.
+# Called by docker.yml for pushes to main (tags: latest, <sha>) and for v* tags
+# (tags: 1.2.3, 1.2, 1, <sha>). release.yml pushes its tag with RELEASE_TOKEN,
+# so the tag push triggers docker.yml. `ref` builds a ref other than the
+# triggering one.
 on:
   workflow_call:
     inputs:
