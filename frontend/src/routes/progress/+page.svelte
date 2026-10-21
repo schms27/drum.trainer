@@ -8,6 +8,8 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import AccuracyChart from '$lib/components/charts/AccuracyChart.svelte';
 	import WeeklyBars from '$lib/components/stats/WeeklyBars.svelte';
+	import TempoBadge from '$lib/components/results/TempoBadge.svelte';
+	import { TEMPO_FILTERS, matchesTempo, type TempoFilter } from '$lib/tempo';
 	import { formatOffset, formatPercent, hitRateTone, timingTone, toneText } from '$lib/score-format';
 	import type { SessionSummary } from '$lib/types/session';
 	import type { PageData } from './$types';
@@ -47,7 +49,9 @@
 		};
 	});
 
-	// ── Takes list (filter lives in the URL so it can be linked to) ─────────
+	const chartShown = $derived(chartTakes.filter((t) => matchesTempo(t.tempo_percent, data.tempoFilter)));
+
+	// ── Takes list (filters live in the URL so they can be linked to) ───────
 	// svelte-ignore state_referenced_locally
 	let takes = $state(data.takes);
 	// svelte-ignore state_referenced_locally
@@ -59,16 +63,22 @@
 		hasMore = data.hasMore;
 	});
 
-	function setFilter(value: string) {
-		const id = Number(value);
-		goto(id ? `/progress?track=${id}` : '/progress', { keepFocus: true, noScroll: true });
-		if (id) chartTrackId = id;
+	function setFilter(track: number | null, tempo: TempoFilter) {
+		const params = new URLSearchParams();
+		if (track) params.set('track', String(track));
+		if (tempo !== 'all') params.set('tempo', tempo);
+		goto(params.size ? `/progress?${params}` : '/progress', { keepFocus: true, noScroll: true });
+		if (track) chartTrackId = track;
 	}
 
 	async function loadMore() {
 		loadingMore = true;
 		try {
-			const page = await listSessions({ trackId: data.trackFilter ?? undefined, before: takes[takes.length - 1].id });
+			const page = await listSessions({
+				trackId: data.trackFilter ?? undefined,
+				tempo: data.tempoFilter,
+				before: takes[takes.length - 1].id
+			});
 			takes = [...takes, ...page.sessions];
 			hasMore = page.hasMore;
 		} finally {
@@ -149,12 +159,14 @@
 					{/each}
 				</select>
 			{/snippet}
-			{#if chartTakes.length > 0}
+			{#if chartShown.length > 0}
 				<div class:opacity-50={chartLoading} class="transition-opacity">
-					<AccuracyChart takes={chartTakes} />
+					<AccuracyChart takes={chartShown} />
 				</div>
-			{:else}
+			{:else if chartLoading}
 				<p class="text-sm text-fg-subtle">Loading…</p>
+			{:else}
+				<p class="text-sm text-fg-subtle">No takes at this tempo for this track.</p>
 			{/if}
 		</Card>
 	{/if}
@@ -168,17 +180,30 @@
 				id="takes-filter"
 				class={selectClass}
 				value={String(data.trackFilter ?? '')}
-				onchange={(e) => setFilter(e.currentTarget.value)}
+				onchange={(e) => setFilter(Number(e.currentTarget.value) || null, data.tempoFilter)}
 			>
 				<option value="">All tracks</option>
 				{#each practised as t (t.id)}
 					<option value={String(t.id)}>{t.name}</option>
 				{/each}
 			</select>
+			<label class="sr-only" for="tempo-filter">Tempo</label>
+			<select
+				id="tempo-filter"
+				class={selectClass}
+				value={data.tempoFilter}
+				onchange={(e) => setFilter(data.trackFilter, e.currentTarget.value as TempoFilter)}
+			>
+				{#each TEMPO_FILTERS as f (f.value)}
+					<option value={f.value}>{f.label}</option>
+				{/each}
+			</select>
 		{/snippet}
 
 		{#if takes.length === 0}
-			<p class="text-sm text-fg-subtle">No takes for this track yet.</p>
+			<p class="text-sm text-fg-subtle">
+				{data.tempoFilter === 'all' ? 'No takes for this track yet.' : 'No takes match these filters.'}
+			</p>
 		{:else}
 			<ul class="flex flex-col divide-y divide-line-subtle -my-2">
 				{#each takes as take (take.id)}
@@ -186,7 +211,10 @@
 						<a href="/results/{take.id}" class="group flex items-center gap-4 py-3">
 							<div class="min-w-0 flex-1">
 								<p class="font-medium text-fg truncate">{trackNames.get(take.track_id) ?? 'Deleted track'}</p>
-								<p class="text-xs text-fg-subtle mt-0.5">{formatDate(take.created_at)}</p>
+								<p class="text-xs text-fg-subtle mt-0.5 flex items-center gap-2">
+									{formatDate(take.created_at)}
+									<TempoBadge percent={take.tempo_percent} practiceBpm={take.practice_bpm} />
+								</p>
 							</div>
 							<dl class="flex items-center gap-4 sm:gap-8 text-right shrink-0">
 								<div>

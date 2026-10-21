@@ -59,6 +59,15 @@
 </PageHeader>
 
 <p class="text-lg text-fg">{summary}</p>
+{#if session.tempo_percent != null}
+	<p class="text-sm text-fg-muted -mt-2">
+		Played at
+		<span class="font-medium {session.tempo_percent === 100 ? 'text-fg' : 'text-accent-text'}">
+			{session.tempo_percent === 100 ? 'the original tempo' : `${session.tempo_percent} %`}
+		</span>
+		· {Math.round(session.practice_bpm ?? 0)} BPM
+	</p>
+{/if}
 
 <ScoreSummary {score} previousHitRate={previous?.hit_rate ?? null} bestHitRate={bestBefore} />
 

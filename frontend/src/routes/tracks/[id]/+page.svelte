@@ -11,6 +11,8 @@
 	import BackingTracks from '$lib/components/tracks/BackingTracks.svelte';
 	import ShareDialog from '$lib/components/tracks/ShareDialog.svelte';
 	import AccuracyChart from '$lib/components/charts/AccuracyChart.svelte';
+	import TempoBadge from '$lib/components/results/TempoBadge.svelte';
+	import { TEMPO_FILTERS, matchesTempo, type TempoFilter } from '$lib/tempo';
 	import {
 		formatOffset,
 		formatPercent,
@@ -33,8 +35,23 @@
 
 	// svelte-ignore state_referenced_locally
 	const stats = data.track.stats;
+
+	// Tempo filter for the tiles, chart and recent takes. "Any tempo" uses the
+	// server's stats (all takes); otherwise they come from the loaded takes.
+	let tempo = $state<TempoFilter>('all');
+	const filtered = $derived(takes.filter((t) => matchesTempo(t.tempo_percent, tempo)));
+	const shown = $derived(
+		tempo === 'all'
+			? { best: stats?.best_hit_rate ?? 0, last: stats?.last_hit_rate ?? 0, count: stats?.sessions ?? 0 }
+			: {
+					best: filtered.reduce((m, t) => Math.max(m, t.hit_rate), 0),
+					last: filtered[0]?.hit_rate ?? 0,
+					count: filtered.length
+				}
+	);
 	// The API lists newest first; the chart wants oldest first.
-	const chronological = [...takes].reverse();
+	const chronological = $derived([...filtered].reverse());
+	const tempoLabel = $derived(TEMPO_FILTERS.find((f) => f.value === tempo)?.label.toLowerCase() ?? '');
 
 	function formatDuration(ms: number) {
 		const secs = Math.floor(ms / 1000);
@@ -82,24 +99,37 @@
 {/if}
 
 {#if stats && stats.sessions > 0}
+	<div class="flex items-center justify-end gap-2 -mb-2">
+		<label class="text-sm text-fg-muted" for="tempo-filter">Show</label>
+		<select
+			id="tempo-filter"
+			class="bg-control text-fg text-sm rounded-lg px-2 h-9 border border-line focus:outline-none focus:ring-2 focus:ring-accent"
+			bind:value={tempo}
+		>
+			{#each TEMPO_FILTERS as f (f.value)}
+				<option value={f.value}>{f.label}</option>
+			{/each}
+		</select>
+	</div>
 	<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 		<div class="bg-card border border-line rounded-xl p-5">
 			<p class="text-xs font-medium text-fg-muted">Best</p>
-			<p class="text-3xl font-bold mt-1 tabular-nums {toneText[hitRateTone(stats.best_hit_rate ?? 0)]}">
-				{formatPercent(stats.best_hit_rate ?? 0)}
+			<p class="text-3xl font-bold mt-1 tabular-nums {shown.count ? toneText[hitRateTone(shown.best)] : 'text-fg-subtle'}">
+				{shown.count ? formatPercent(shown.best) : '—'}
 			</p>
-			<p class="text-xs text-fg-subtle mt-1">notes hit</p>
+			<p class="text-xs text-fg-subtle mt-1">notes hit{tempo === 'all' ? '' : ` · ${tempoLabel}`}</p>
 		</div>
 		<div class="bg-card border border-line rounded-xl p-5">
 			<p class="text-xs font-medium text-fg-muted">Last take</p>
-			<p class="text-3xl font-bold mt-1 tabular-nums {toneText[hitRateTone(stats.last_hit_rate ?? 0)]}">
-				{formatPercent(stats.last_hit_rate ?? 0)}
+			<p class="text-3xl font-bold mt-1 tabular-nums {shown.count ? toneText[hitRateTone(shown.last)] : 'text-fg-subtle'}">
+				{shown.count ? formatPercent(shown.last) : '—'}
 			</p>
-			<p class="text-xs text-fg-subtle mt-1">notes hit</p>
+			<p class="text-xs text-fg-subtle mt-1">notes hit{tempo === 'all' ? '' : ` · ${tempoLabel}`}</p>
 		</div>
 		<div class="bg-card border border-line rounded-xl p-5">
 			<p class="text-xs font-medium text-fg-muted">Takes</p>
-			<p class="text-3xl font-bold mt-1 tabular-nums text-fg">{stats.sessions}</p>
+			<p class="text-3xl font-bold mt-1 tabular-nums text-fg">{shown.count}</p>
+			{#if tempo !== 'all'}<p class="text-xs text-fg-subtle mt-1">{tempoLabel}</p>{/if}
 		</div>
 		<div class="bg-card border border-line rounded-xl p-5">
 			<p class="text-xs font-medium text-fg-muted">Last practised</p>
@@ -110,15 +140,20 @@
 	</div>
 
 	<Card title="Notes hit per take" description={hasMoreTakes ? 'Your latest 100 takes.' : undefined}>
-		<AccuracyChart takes={chronological} />
+		{#if chronological.length > 0}
+			<AccuracyChart takes={chronological} />
+		{:else}
+			<p class="text-sm text-fg-subtle">No takes at this tempo yet.</p>
+		{/if}
 	</Card>
 
 	<Card title="Recent takes">
 		<ul class="flex flex-col divide-y divide-line-subtle -my-2">
-			{#each takes.slice(0, 5) as take (take.id)}
+			{#each filtered.slice(0, 5) as take (take.id)}
 				<li>
 					<a href="/results/{take.id}" class="group flex items-center gap-4 py-2.5">
 						<span class="flex-1 text-sm text-fg">{formatDate(take.created_at)}</span>
+						<TempoBadge percent={take.tempo_percent} practiceBpm={take.practice_bpm} />
 						<span class="text-sm font-semibold tabular-nums {toneText[hitRateTone(take.hit_rate)]}">{formatPercent(take.hit_rate)}</span>
 						<span class="hidden sm:inline text-sm tabular-nums w-16 text-right {toneText[timingTone(take.avg_offset_ms)]}">
 							{formatOffset(take.avg_offset_ms)}
@@ -128,9 +163,15 @@
 				</li>
 			{/each}
 		</ul>
-		{#if takes.length > 5}
-			<a href="/progress?track={track.id}" class="inline-block mt-4 text-sm text-accent-text hover:underline">
-				All {stats.sessions} takes in Progress
+		{#if filtered.length === 0}
+			<p class="text-sm text-fg-subtle">No takes at this tempo yet.</p>
+		{/if}
+		{#if filtered.length > 5}
+			<a
+				href="/progress?track={track.id}{tempo === 'all' ? '' : `&tempo=${tempo}`}"
+				class="inline-block mt-4 text-sm text-accent-text hover:underline"
+			>
+				All {tempo === 'all' ? stats.sessions : filtered.length} {tempo === 'all' ? '' : tempoLabel + ' '}takes in Progress
 			</a>
 		{/if}
 	</Card>

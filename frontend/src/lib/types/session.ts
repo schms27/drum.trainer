@@ -40,7 +40,15 @@ export interface ScoreResult {
 	ghost_hits: GhostHit[];
 }
 
-export interface Session {
+/** Tempo a take was played at; all null for takes recorded before tempo tracking. */
+export interface SessionTempo {
+	practice_bpm: number | null;
+	track_bpm: number | null;
+	/** practice_bpm / track_bpm in whole percent. */
+	tempo_percent: number | null;
+}
+
+export interface Session extends SessionTempo {
 	id: number;
 	track_id: number;
 	started_at: string;
@@ -50,7 +58,7 @@ export interface Session {
 	created_at: string;
 }
 
-export interface SessionSummary {
+export interface SessionSummary extends SessionTempo {
 	id: number;
 	track_id: number;
 	hit_count: number;
@@ -71,4 +79,5 @@ export interface SubmitSessionRequest {
 	started_at: string;
 	ended_at: string;
 	hits: RecordedHit[];
+	practice_bpm?: number;
 }

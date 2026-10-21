@@ -17,6 +17,13 @@ import (
 // minHitTimeMs is the earliest accepted hit time relative to the start of the track.
 const minHitTimeMs = -1000.0
 
+// Practice tempo range accepted for a take, the same as the session page's
+// ?bpm= link allows.
+const (
+	minPracticeBPM = 20.0
+	maxPracticeBPM = 300.0
+)
+
 type sessionsHandler struct {
 	db      *dbpkg.DB
 	maxHits int
@@ -31,6 +38,10 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.TrackID == 0 || req.StartedAt == "" || req.EndedAt == "" {
 		writeError(w, http.StatusBadRequest, "track_id, started_at, and ended_at are required")
+		return
+	}
+	if req.PracticeBPM != nil && (*req.PracticeBPM < minPracticeBPM || *req.PracticeBPM > maxPracticeBPM) {
+		writeError(w, http.StatusBadRequest, "practice_bpm must be between 20 and 300")
 		return
 	}
 	if len(req.Hits) > h.maxHits {
@@ -123,6 +134,10 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		DurationMs: float64(endedAt.Sub(startedAt).Milliseconds()),
 		HitCount:   len(req.Hits),
 	}
+	if req.PracticeBPM != nil {
+		trackBPM := track.BPM
+		session.SessionTempo = models.NewSessionTempo(req.PracticeBPM, &trackBPM)
+	}
 
 	// Instrument of each recorded note number, for annotating the raw hits.
 	instrMap := make(map[string]string)
@@ -150,13 +165,23 @@ const maxSessionPageSize = 100
 func (h *sessionsHandler) list(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())
 
-	trackID := int64(0)
+	var filter models.SessionFilter
 	if s := r.URL.Query().Get("track_id"); s != "" {
 		var err error
-		trackID, err = strconv.ParseInt(s, 10, 64)
+		filter.TrackID, err = strconv.ParseInt(s, 10, 64)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid track_id")
 			return
+		}
+	}
+	for param, dst := range map[string]**int{"tempo_min": &filter.TempoMin, "tempo_max": &filter.TempoMax} {
+		if s := r.URL.Query().Get(param); s != "" {
+			n, err := strconv.Atoi(s)
+			if err != nil || n < 0 || n > 10000 {
+				writeError(w, http.StatusBadRequest, param+" must be a whole percentage")
+				return
+			}
+			*dst = &n
 		}
 	}
 
@@ -180,7 +205,7 @@ func (h *sessionsHandler) list(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sessions, hasMore, err := dbpkg.ListSessions(h.db, user.ID, trackID, limit, before)
+	sessions, hasMore, err := dbpkg.ListSessions(h.db, user.ID, filter, limit, before)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list sessions")
 		return
