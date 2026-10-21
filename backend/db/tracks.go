@@ -8,8 +8,11 @@ import (
 )
 
 // InsertTrack inserts a track row and all its notes inside a single transaction,
-// setting the track's ID and creation time.
+// setting the track's ID and creation time. An empty Origin means an upload.
 func InsertTrack(db *DB, track *models.Track, notes []models.NoteEvent, userID int64) error {
+	if track.Origin == "" {
+		track.Origin = models.TrackOriginUpload
+	}
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -19,10 +22,10 @@ func InsertTrack(db *DB, track *models.Track, notes []models.NoteEvent, userID i
 	var trackID int64
 	var ct scanTime
 	err = tx.QueryRow(
-		db.Rebind(`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, user_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at`),
+		db.Rebind(`INSERT INTO tracks (name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, user_id, origin)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, created_at`),
 		track.Name, track.Filename, track.FilePath,
-		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM, track.TimeSigNumerator, userID,
+		track.FileSize, track.DurationMs, track.NoteCount, track.PPQ, track.BPM, track.TimeSigNumerator, userID, track.Origin,
 	).Scan(&trackID, &ct)
 	if err != nil {
 		return fmt.Errorf("insert track: %w", err)
@@ -288,7 +291,7 @@ func SetTrackMix(db *DB, trackID, userID int64, metronome *float64, pilots []Pil
 }
 
 // trackColumns is the column list scanTrack expects, in order.
-const trackColumns = `id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, metronome_volume, notes_revision, created_at,
+const trackColumns = `id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, metronome_volume, notes_revision, origin, created_at,
 	visibility, share_token, rights_basis, source_track_id, origin_track_id IS NOT NULL, disabled_at IS NOT NULL, disabled_reason`
 
 func scanTrack(s scanner) (*models.Track, error) {
@@ -299,7 +302,7 @@ func scanTrack(s scanner) (*models.Track, error) {
 	var sourceID sql.NullInt64
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
-		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &metronomeVolume, &t.NotesRevision, &ct,
+		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &metronomeVolume, &t.NotesRevision, &t.Origin, &ct,
 		&t.Visibility, &shareToken, &rightsBasis, &sourceID, &t.Copied, &t.Disabled, &disabledReason,
 	)
 	if err != nil {

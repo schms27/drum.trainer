@@ -50,6 +50,17 @@ export async function uploadTrack(
 	});
 }
 
+/** Creates a track from scratch (no uploaded file), to be filled in the editor. */
+export async function createBlankTrack(req: {
+	name: string;
+	bpm: number;
+	time_sig_numerator: number;
+	bars: number;
+	notes: { note_number: number; time_ms: number; velocity: number }[];
+}): Promise<TrackWithNotes> {
+	return apiFetch<TrackWithNotes>('/tracks/blank', { method: 'POST', body: JSON.stringify(req) });
+}
+
 /** Replaces the track's notes with an edited set. durationMs sets a new length. */
 export async function replaceTrackNotes(
 	trackId: number,

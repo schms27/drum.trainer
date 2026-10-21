@@ -54,7 +54,8 @@
 	});
 
 	function resetForm() {
-		rights = track.rights_basis;
+		// A track made from scratch is most likely the user's own; they still confirm it.
+		rights = track.rights_basis ?? (track.origin === 'editor' ? 'original' : null);
 		visibility = track.visibility === 'public' ? 'public' : 'unlisted';
 		attested = false;
 	}

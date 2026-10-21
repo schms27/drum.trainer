@@ -17,6 +17,7 @@ type Track struct {
 	PracticeBPM      *float64  `json:"practice_bpm"`       // nil = use native BPM
 	MetronomeVolume  *float64  `json:"metronome_volume"`   // 0–1; nil = use the kit profile's default
 	NotesRevision    int       `json:"notes_revision"`     // bumped on every edit of the notes
+	Origin           string    `json:"origin"`             // TrackOriginUpload or TrackOriginEditor
 	CreatedAt        time.Time `json:"created_at"`
 	// Sharing. Only the owner ever receives a Track, so the token is safe here.
 	Visibility    string  `json:"visibility"`      // "private" | "unlisted"
@@ -57,6 +58,12 @@ type NoteMapping struct {
 	NoteNumber int    `json:"note_number"`
 	Instrument string `json:"instrument"`
 }
+
+// Origin values for Track.Origin.
+const (
+	TrackOriginUpload = "upload" // parsed from an uploaded MIDI file
+	TrackOriginEditor = "editor" // created from scratch; has no uploaded file
+)
 
 // Visibility values for Track.Visibility.
 const (

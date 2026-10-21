@@ -6,6 +6,7 @@ import {
 	countByNote,
 	mergeDuplicates,
 	moveNotes,
+	repeatBars,
 	snap,
 	stepMs,
 	withIds,
@@ -67,6 +68,15 @@ describe('editor notes', () => {
 		expect(barsFor(16000, 120, 4)).toBe(8);
 		expect(barsFor(16001, 120, 4)).toBe(9);
 		expect(barsFor(0, 120, 4)).toBe(1);
+	});
+
+	it('repeats a range of bars and pushes later bars back', () => {
+		// 2 s bars: one hit in bar 1, one in bar 2, one in bar 3.
+		const notes = withIds([n(36, 0), n(38, 2500), n(42, 4000)]);
+		const { notes: out, addedBars } = repeatBars(notes, 2000, 1, 2, 2);
+		expect(addedBars).toBe(4);
+		expect(strip(out)).toEqual([n(36, 0), n(38, 2500), n(36, 4000), n(38, 6500), n(36, 8000), n(38, 10500), n(42, 12000)]);
+		expect(repeatBars(notes, 2000, 3, 2, 1).addedBars).toBe(0);
 	});
 
 	it('undoes and redoes', () => {

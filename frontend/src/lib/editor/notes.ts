@@ -111,6 +111,32 @@ export function barsFor(durationMs: number, bpm: number, beatsPerBar: number): n
 	return Math.max(1, Math.ceil(durationMs / ((60000 / bpm) * beatsPerBar) - 1e-6));
 }
 
+/**
+ * Repeats bars `from`–`to` (1-based, inclusive) `times` more times right
+ * after bar `to`, pushing later hits back. Returns the notes and how many
+ * bars were added.
+ */
+export function repeatBars(
+	notes: EditorNote[],
+	barMs: number,
+	from: number,
+	to: number,
+	times: number
+): { notes: EditorNote[]; addedBars: number } {
+	if (from < 1 || to < from || times < 1) return { notes, addedBars: 0 };
+	const start = (from - 1) * barMs;
+	const end = to * barMs;
+	const span = end - start;
+	const shift = span * times;
+	// A tiny epsilon keeps hits stored a hair before a bar line in their bar.
+	const inRange = (n: EditorNote) => n.time_ms >= start - 1e-6 && n.time_ms < end - 1e-6;
+	const out: EditorNote[] = notes.map((n) => (n.time_ms >= end - 1e-6 ? { ...n, time_ms: n.time_ms + shift } : n));
+	for (let k = 1; k <= times; k++) {
+		for (const n of notes.filter(inRange)) out.push(newNote(n.note_number, n.time_ms + span * k, n.velocity));
+	}
+	return { notes: sortNotes(out), addedBars: (to - from + 1) * times };
+}
+
 /** Undo/redo history of note lists. */
 export class History {
 	private past: EditorNote[][] = [];

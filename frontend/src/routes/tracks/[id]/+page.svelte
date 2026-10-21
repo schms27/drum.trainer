@@ -72,7 +72,7 @@
 
 <PageHeader
 	title={track.name}
-	subtitle="{formatDuration(track.duration_ms)} · {Math.round(track.bpm)} BPM · {track.note_count} notes · {track.filename}"
+	subtitle="{formatDuration(track.duration_ms)} · {Math.round(track.bpm)} BPM · {track.note_count} notes{track.origin === 'editor' ? ' · made in the editor' : ` · ${track.filename}`}"
 	back={{ href: '/', label: 'Library' }}
 >
 	{#snippet actions()}
@@ -228,11 +228,18 @@
 		{/if}
 
 		{#if !track.copied && !track.disabled}
-			<Card title="Download" description="Your file as you uploaded it, or just the drum part as a new MIDI file.">
+			<Card
+				title="Download"
+				description={track.origin === 'editor'
+					? 'The drum part as a MIDI file.'
+					: 'Your file as you uploaded it, or just the drum part as a new MIDI file.'}
+			>
 				<div class="flex flex-wrap gap-2">
-					<Button href={trackFileUrl(track.id)} download={track.filename} variant="secondary">
-						<Download size={16} aria-hidden="true" /> Original file
-					</Button>
+					{#if track.origin !== 'editor'}
+						<Button href={trackFileUrl(track.id)} download={track.filename} variant="secondary">
+							<Download size={16} aria-hidden="true" /> Original file
+						</Button>
+					{/if}
 					<Button href={trackExportUrl(track.id)} download="" variant="secondary">
 						<Download size={16} aria-hidden="true" /> Drum part (.mid)
 					</Button>
