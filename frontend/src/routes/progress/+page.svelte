@@ -8,6 +8,7 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import AccuracyChart from '$lib/components/charts/AccuracyChart.svelte';
 	import WeeklyBars from '$lib/components/stats/WeeklyBars.svelte';
+	import PracticeCalendar from '$lib/components/stats/PracticeCalendar.svelte';
 	import TempoBadge from '$lib/components/results/TempoBadge.svelte';
 	import { TEMPO_FILTERS, matchesTempo, type TempoFilter } from '$lib/tempo';
 	import { formatOffset, formatPercent, hitRateTone, timingTone, toneText } from '$lib/score-format';
@@ -170,6 +171,8 @@
 			{/if}
 		</Card>
 	{/if}
+
+	<PracticeCalendar daily={stats.daily ?? []} />
 
 	<WeeklyBars data={stats.weekly} valueKey="minutes_played" label="Minutes played per week" unit="min" />
 
