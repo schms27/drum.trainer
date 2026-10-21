@@ -25,7 +25,7 @@ func InsertPilotTrack(db *DB, pilot *models.PilotTrack, userID int64) error {
 // ListPilotTracks returns all pilot tracks for a drum track owned by the user.
 func ListPilotTracks(db *DB, trackID, userID int64) ([]models.PilotTrack, error) {
 	rows, err := db.Query(
-		db.Rebind(`SELECT id, track_id, name, filename, file_path, file_size, mime_type, created_at
+		db.Rebind(`SELECT id, track_id, name, filename, file_path, file_size, mime_type, volume, created_at
 		 FROM pilot_tracks WHERE track_id = ? AND user_id = ? ORDER BY id ASC`),
 		trackID, userID,
 	)
@@ -48,7 +48,7 @@ func ListPilotTracks(db *DB, trackID, userID int64) ([]models.PilotTrack, error)
 // GetPilotTrack returns a single pilot track, scoped to the owning user.
 func GetPilotTrack(db *DB, id, trackID, userID int64) (*models.PilotTrack, error) {
 	row := db.QueryRow(
-		db.Rebind(`SELECT id, track_id, name, filename, file_path, file_size, mime_type, created_at
+		db.Rebind(`SELECT id, track_id, name, filename, file_path, file_size, mime_type, volume, created_at
 		 FROM pilot_tracks WHERE id = ? AND track_id = ? AND user_id = ?`),
 		id, trackID, userID,
 	)
@@ -100,7 +100,7 @@ func scanPilot(s scanner) (*models.PilotTrack, error) {
 	var ct scanTime
 	err := s.Scan(
 		&p.ID, &p.TrackID, &p.Name, &p.Filename,
-		&p.FilePath, &p.FileSize, &p.MimeType, &ct,
+		&p.FilePath, &p.FileSize, &p.MimeType, &p.Volume, &ct,
 	)
 	if err != nil {
 		return nil, err

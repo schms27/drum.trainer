@@ -114,6 +114,40 @@ func (h *kitsHandler) update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, kit)
 }
 
+// PUT /api/v1/kits/{id}/mix
+// Saves the kit profile's default playback levels, used for tracks without
+// their own mix. null clears a level (full level).
+func (h *kitsHandler) setMix(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var body struct {
+		MetronomeVolume *float64 `json:"metronome_volume"`
+		PilotVolume     *float64 `json:"pilot_volume"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if !validVolume(body.MetronomeVolume) || !validVolume(body.PilotVolume) {
+		writeError(w, http.StatusBadRequest, "volumes must be between 0 and 1")
+		return
+	}
+	user := UserFromContext(r.Context())
+	if err := dbpkg.SetKitMix(h.db, id, user.ID, body.MetronomeVolume, body.PilotVolume); err != nil {
+		writeKitError(w, err)
+		return
+	}
+	kit, err := dbpkg.GetKitProfile(h.db, id, user.ID)
+	if err != nil {
+		writeKitError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, kit)
+}
+
 // DELETE /api/v1/kits/{id}
 func (h *kitsHandler) delete(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(chi.URLParam(r, "id"))

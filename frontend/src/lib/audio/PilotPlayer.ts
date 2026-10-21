@@ -8,6 +8,8 @@ interface PilotState {
 	gain: GainNode;
 	source: AudioBufferSourceNode | null;
 	muted: boolean;
+	/** Gain while not muted (0–1). */
+	volume: number;
 }
 
 /**
@@ -35,10 +37,7 @@ export class PilotPlayer {
 				if (!resp.ok) throw new Error(`Failed to fetch pilot audio: ${resp.status}`);
 				const arrayBuf = await resp.arrayBuffer();
 				const buffer = await this.ctx.decodeAudioData(arrayBuf);
-				const gain = this.ctx.createGain();
-				gain.gain.value = 1;
-				gain.connect(this.ctx.destination);
-				return { id: p.id, trackId: p.trackId, name: p.name, buffer, gain, source: null, muted: false };
+				return this.createPilot(p, buffer);
 			})
 		);
 		this.pilots = loaded;
@@ -56,13 +55,25 @@ export class PilotPlayer {
 			pilots.map(async (p, i) => {
 				// slice() copies the buffer — decodeAudioData detaches the original
 				const buffer = await this.ctx.decodeAudioData(rawBuffers[i].slice(0));
-				const gain = this.ctx.createGain();
-				gain.gain.value = 1;
-				gain.connect(this.ctx.destination);
-				return { id: p.id, trackId: p.trackId, name: p.name, buffer, gain, source: null, muted: false };
+				return this.createPilot(p, buffer);
 			})
 		);
 		this.pilots = loaded;
+	}
+
+	/** Per-pilot gain to start with, for pilots loaded after this call. */
+	private initialVolumes: Record<number, number> = {};
+
+	setInitialVolumes(volumes: Record<number, number>): void {
+		this.initialVolumes = volumes;
+	}
+
+	private createPilot(p: { id: number; trackId: number; name: string }, buffer: AudioBuffer): PilotState {
+		const volume = this.initialVolumes[p.id] ?? 1;
+		const gain = this.ctx.createGain();
+		gain.gain.value = volume;
+		gain.connect(this.ctx.destination);
+		return { id: p.id, trackId: p.trackId, name: p.name, buffer, gain, source: null, muted: false, volume };
 	}
 
 	/**
@@ -108,9 +119,23 @@ export class PilotPlayer {
 		const p = this.pilots.find((x) => x.id === pilotId);
 		if (!p) return;
 		p.muted = muted;
-		const target = muted ? 0 : 1;
-		// 10ms ramp to avoid click artifacts.
-		p.gain.gain.linearRampToValueAtTime(target, this.ctx.currentTime + 0.01);
+		this.applyGain(p);
+	}
+
+	/** Sets a pilot's gain (0–1); takes effect at once, also while playing. */
+	setVolume(pilotId: number, volume: number): void {
+		const p = this.pilots.find((x) => x.id === pilotId);
+		if (!p) return;
+		p.volume = volume;
+		this.applyGain(p);
+	}
+
+	private applyGain(p: PilotState): void {
+		const now = this.ctx.currentTime;
+		// Ramp from the current value over 10 ms to avoid click artifacts.
+		p.gain.gain.cancelScheduledValues(now);
+		p.gain.gain.setValueAtTime(p.gain.gain.value, now);
+		p.gain.gain.linearRampToValueAtTime(p.muted ? 0 : p.volume, now + 0.01);
 	}
 
 	isMuted(pilotId: number): boolean {

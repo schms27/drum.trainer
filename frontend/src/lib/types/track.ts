@@ -16,6 +16,8 @@ export interface Track {
 	bpm: number;
 	time_sig_numerator: number;
 	practice_bpm: number | null;
+	/** Saved metronome level (0–1) for this track; null = the kit profile's default. */
+	metronome_volume: number | null;
 	created_at: string;
 	visibility: Visibility;
 	/** Link token while the track is shared; null when private. */

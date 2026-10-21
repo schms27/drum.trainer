@@ -112,6 +112,18 @@ Delete a track, all associated sessions and scores (via SQLite CASCADE), and the
 
 ---
 
+### PUT /api/v1/tracks/:id/mix
+
+Saves the session page's mixer for a track. Levels are 0–1; `null` clears a level, so the active kit profile's default (or full level) applies. Backing tracks that don't belong to the track are ignored.
+
+**Request body:** `{ "metronome_volume": 0.6, "pilots": [{ "id": 4, "volume": 0.8 }] }`
+
+**Response `204 No Content`** · `400` level outside 0–1 · `404` track not found
+
+Tracks return the saved level as `metronome_volume`, backing tracks as `volume` (both `null` when not set).
+
+---
+
 ## Sharing
 
 Tracks can be shared through an unlisted link. Every track object carries `visibility`
@@ -417,6 +429,10 @@ A kit profile maps the MIDI notes sent by the user's e-drum kit to instrument gr
 **Request body:** `{ "name": "Roland TD-17", "mappings": [{ "note_number": 26, "instrument": "Hi-Hat" }] }`
 
 `name` is 1–60 characters; each `note_number` (0–127) may appear once; `instrument` is one of the instrument groups. Returns the saved kit (`201 Created` / `200 OK`). The user's first kit becomes active automatically.
+
+### PUT /api/v1/kits/:id/mix
+
+Saves the kit profile's default playback levels, used on tracks without their own mix: `{ "metronome_volume": 0.5, "pilot_volume": 0.8 }`. Levels are 0–1, `null` clears one (full level). Returns the kit, which carries `metronome_volume` and `pilot_volume`.
 
 ### DELETE /api/v1/kits/:id
 

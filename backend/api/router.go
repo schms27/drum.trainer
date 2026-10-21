@@ -81,6 +81,7 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 			r.Patch("/tracks/{id}/practice-bpm", th.setPracticeBPM)
 			r.Get("/tracks/{id}/mapping", th.getMapping)
 			r.Put("/tracks/{id}/mapping", th.updateMapping)
+			r.Put("/tracks/{id}/mix", th.setMix)
 
 			// Sharing.
 			r.Put("/tracks/{id}/sharing", shh.share)
@@ -107,6 +108,7 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 			r.Post("/kits", kh.create)
 			r.Put("/kits/active", kh.setActive)
 			r.Put("/kits/{id}", kh.update)
+			r.Put("/kits/{id}/mix", kh.setMix)
 			r.Delete("/kits/{id}", kh.delete)
 
 			// Moderation — ADMIN_EMAILS only.

@@ -213,19 +213,50 @@ func SetPracticeBPM(db *DB, trackID, userID int64, bpm *float64) error {
 	return nil
 }
 
+// PilotVolume is the saved level of one backing track.
+type PilotVolume struct {
+	ID     int64    `json:"id"`
+	Volume *float64 `json:"volume"`
+}
+
+// SetTrackMix saves a track's metronome level and the levels of the given
+// backing tracks (nil clears a level). Backing tracks that don't belong to
+// the track are ignored. Returns sql.ErrNoRows if the track isn't the user's.
+func SetTrackMix(db *DB, trackID, userID int64, metronome *float64, pilots []PilotVolume) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	res, err := tx.Exec(db.Rebind(`UPDATE tracks SET metronome_volume = ? WHERE id = ? AND user_id = ?`), metronome, trackID, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	for _, p := range pilots {
+		if _, err := tx.Exec(db.Rebind(`UPDATE pilot_tracks SET volume = ? WHERE id = ? AND track_id = ? AND user_id = ?`),
+			p.Volume, p.ID, trackID, userID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // trackColumns is the column list scanTrack expects, in order.
-const trackColumns = `id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, created_at,
+const trackColumns = `id, name, filename, file_path, file_size, duration_ms, note_count, ppq, bpm, time_sig_numerator, practice_bpm, metronome_volume, created_at,
 	visibility, share_token, rights_basis, source_track_id, origin_track_id IS NOT NULL, disabled_at IS NOT NULL, disabled_reason`
 
 func scanTrack(s scanner) (*models.Track, error) {
 	var t models.Track
-	var practiceBPM sql.NullFloat64
+	var practiceBPM, metronomeVolume sql.NullFloat64
 	var ct scanTime
 	var shareToken, rightsBasis, disabledReason sql.NullString
 	var sourceID sql.NullInt64
 	err := s.Scan(
 		&t.ID, &t.Name, &t.Filename, &t.FilePath,
-		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &ct,
+		&t.FileSize, &t.DurationMs, &t.NoteCount, &t.PPQ, &t.BPM, &t.TimeSigNumerator, &practiceBPM, &metronomeVolume, &ct,
 		&t.Visibility, &shareToken, &rightsBasis, &sourceID, &t.Copied, &t.Disabled, &disabledReason,
 	)
 	if err != nil {
@@ -233,6 +264,9 @@ func scanTrack(s scanner) (*models.Track, error) {
 	}
 	if practiceBPM.Valid {
 		t.PracticeBPM = &practiceBPM.Float64
+	}
+	if metronomeVolume.Valid {
+		t.MetronomeVolume = &metronomeVolume.Float64
 	}
 	if shareToken.Valid {
 		t.ShareToken = &shareToken.String

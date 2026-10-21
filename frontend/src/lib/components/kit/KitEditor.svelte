@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Trash, Save } from '@lucide/svelte';
-	import { createKit, updateKit, type KitProfile } from '$lib/api/kits';
+	import { createKit, setKitMix, updateKit, type KitProfile } from '$lib/api/kits';
+	import VolumeSlider from '$lib/components/ui/VolumeSlider.svelte';
 	import { listenToInput } from '$lib/midi/input';
 	import { INSTRUMENTS, drumGroup, noteLabel } from '$lib/drums';
 	import MidiDeviceSelector from '$lib/components/recorder/MidiDeviceSelector.svelte';
@@ -30,6 +31,11 @@
 	let rows = $state<Row[]>(
 		(kit?.mappings ?? []).map((m) => ({ note: m.note_number, instrument: m.instrument, velocity: null }))
 	);
+	// Default levels for tracks that have no mix of their own.
+	// svelte-ignore state_referenced_locally
+	let metronomeLevel = $state(kit?.metronome_volume ?? 1);
+	// svelte-ignore state_referenced_locally
+	let pilotLevel = $state(kit?.pilot_volume ?? 1);
 	let deviceId = $state('');
 	let lastNote = $state<number | null>(null);
 	let flashTimer: ReturnType<typeof setTimeout> | undefined;
@@ -70,7 +76,7 @@
 		const mappings = rows.map((r) => ({ note_number: r.note, instrument: r.instrument }));
 		try {
 			const saved = kit ? await updateKit(kit.id, name.trim(), mappings) : await createKit(name.trim(), mappings);
-			onSaved(saved);
+			onSaved(await setKitMix(saved.id, metronomeLevel, pilotLevel));
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : 'Could not save the kit';
 		} finally {
@@ -151,6 +157,21 @@
 		</div>
 		<p class="text-xs text-fg-subtle">Pads you don't list here use the standard General MIDI instrument.</p>
 	{/if}
+
+	<div class="flex flex-col gap-2 max-w-md">
+		<p class="text-sm font-medium text-fg">Default volume</p>
+		<p class="text-sm text-fg-muted">
+			Used on tracks where you haven’t set your own levels yet, for example to suit the headphones you use with this kit.
+		</p>
+		<div class="flex items-center gap-3">
+			<span class="w-32 shrink-0 text-sm text-fg">Metronome</span>
+			<VolumeSlider id="kit-metronome-volume" label="Default metronome volume" bind:value={metronomeLevel} />
+		</div>
+		<div class="flex items-center gap-3">
+			<span class="w-32 shrink-0 text-sm text-fg">Backing tracks</span>
+			<VolumeSlider id="kit-pilot-volume" label="Default backing track volume" bind:value={pilotLevel} />
+		</div>
+	</div>
 
 	{#if error}<Notice variant="error">{error}</Notice>{/if}
 

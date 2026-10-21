@@ -9,5 +9,8 @@ type KitProfile struct {
 	Name      string        `json:"name"`
 	Mappings  []NoteMapping `json:"mappings"`
 	Active    bool          `json:"active"`
+	// Default playback levels (0–1) for tracks without their own mix; nil = full level.
+	MetronomeVolume *float64 `json:"metronome_volume"`
+	PilotVolume     *float64 `json:"pilot_volume"`
 	CreatedAt time.Time     `json:"created_at"`
 }

@@ -7,6 +7,8 @@ export interface PilotTrack {
 	filename: string;
 	file_size: number;
 	mime_type: string;
+	/** Saved level (0–1); null = the kit profile's default. */
+	volume: number | null;
 	created_at: string;
 }
 
