@@ -10,6 +10,7 @@
 		barsFor,
 		moveNotes,
 		newNote,
+		repeatBars,
 		sortNotes,
 		stepMs as gridStep,
 		withIds,
@@ -97,6 +98,23 @@
 		if (beyond.length && !confirm(`Shortening to ${next} bars removes ${beyond.length} hits after the end. Continue?`)) return;
 		if (beyond.length) change(notes.filter((n) => n.time_ms < end));
 		bars = next;
+	}
+
+	// ── Repeat bars ─────────────────────────────────────────────────────────
+	let repeatFrom = $state(1);
+	let repeatTo = $state(1);
+	let repeatTimes = $state(1);
+	function applyRepeat() {
+		const from = Math.max(1, Math.round(repeatFrom));
+		const to = Math.min(bars, Math.max(from, Math.round(repeatTo)));
+		const times = Math.max(1, Math.min(64, Math.round(repeatTimes)));
+		if (bars + (to - from + 1) * times > 999) {
+			error = 'That would make the track longer than 999 bars.';
+			return;
+		}
+		const res = repeatBars(notes, barMs, from, to, times);
+		change(res.notes);
+		bars += res.addedBars;
 	}
 
 	// ── Selection ───────────────────────────────────────────────────────────
@@ -286,6 +304,19 @@
 				onToggleSelect={toggleSelect}
 			/>
 		{/if}
+
+		<div class="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+			<span>Repeat bars</span>
+			<label class="sr-only" for="repeat-from">First bar to repeat</label>
+			<input id="repeat-from" type="number" min="1" max={bars} bind:value={repeatFrom} class="w-16 h-8 bg-control border border-line rounded-lg px-2 text-fg tabular-nums" />
+			<span>to</span>
+			<label class="sr-only" for="repeat-to">Last bar to repeat</label>
+			<input id="repeat-to" type="number" min="1" max={bars} bind:value={repeatTo} class="w-16 h-8 bg-control border border-line rounded-lg px-2 text-fg tabular-nums" />
+			<label class="sr-only" for="repeat-times">How many times</label>
+			<input id="repeat-times" type="number" min="1" max="64" bind:value={repeatTimes} class="w-14 h-8 bg-control border border-line rounded-lg px-2 text-fg tabular-nums" />
+			<span>more {repeatTimes === 1 ? 'time' : 'times'}</span>
+			<Button size="sm" variant="ghost" onclick={applyRepeat}>Repeat</Button>
+		</div>
 
 		{#if selectedNotes.length}
 			<div class="flex flex-wrap items-center gap-3 bg-control/50 rounded-lg px-3 py-2" aria-live="polite">

@@ -20,6 +20,8 @@ export interface Track {
 	metronome_volume: number | null;
 	/** Bumped every time the notes are edited. */
 	notes_revision: number;
+	/** 'upload' for a MIDI file, 'editor' for a track created from scratch (no file). */
+	origin: 'upload' | 'editor';
 	created_at: string;
 	visibility: Visibility;
 	/** Link token while the track is shared; null when private. */

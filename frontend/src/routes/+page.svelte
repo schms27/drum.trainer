@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Plus } from '@lucide/svelte';
+	import { PencilRuler, Plus } from '@lucide/svelte';
 	import MidiUpload from '$lib/components/upload/MidiUpload.svelte';
 	import TrackList from '$lib/components/tracks/TrackList.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
@@ -48,11 +48,17 @@
 
 		<Card title="Add your first track">
 			<MidiUpload onUploaded={handleUploaded} />
+			<p class="text-sm text-fg-muted mt-4">
+				No MIDI file? <a href="/tracks/new" class="text-accent-text hover:underline">Write a track yourself</a> in the editor.
+			</p>
 		</Card>
 	</div>
 {:else}
 	<PageHeader title="Library" subtitle="{tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}">
 		{#snippet actions()}
+			<Button href="/tracks/new" variant="secondary">
+				<PencilRuler size={16} aria-hidden="true" /> New track
+			</Button>
 			<Button variant={showUpload ? 'secondary' : 'primary'} onclick={() => (showUpload = !showUpload)} aria-expanded={showUpload}>
 				{#if showUpload}
 					Cancel

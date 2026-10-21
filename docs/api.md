@@ -112,6 +112,27 @@ Delete a track, all associated sessions and scores (via SQLite CASCADE), and the
 
 ---
 
+### POST /api/v1/tracks/blank
+
+Creates a track from scratch, to be filled in the track editor. It has no uploaded file: `origin` is `"editor"` (uploads are `"upload"`), `GET /tracks/:id/file` returns `404`, and `export.mid` works as usual.
+
+**Request body:**
+```json
+{
+  "name": "Paradiddle warm-up",
+  "bpm": 100,
+  "time_sig_numerator": 4,
+  "bars": 4,
+  "notes": [{ "note_number": 36, "time_ms": 0, "velocity": 100 }]
+}
+```
+
+`name` 1–100 characters, `bpm` 20–300, `time_sig_numerator` 1–16, `bars` 1–999 (at most 2 hours). `notes` is optional (same rules as `PUT /tracks/:id/notes`); notes past the end are dropped. The active kit profile's pad mapping is copied to the track's note mapping.
+
+**Response `201 Created`:** the track with its notes · `400` invalid input
+
+---
+
 ### PUT /api/v1/tracks/:id/notes
 
 Replaces a track's notes with an edited set (the track editor). Instruments follow the track's note mapping.
