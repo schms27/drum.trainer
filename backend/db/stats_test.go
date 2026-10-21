@@ -54,6 +54,17 @@ func TestWeeklyStatsUsesUserTimeZone(t *testing.T) {
 	if got := weekOf(zurich); got != "2026-10-12" {
 		t.Errorf("Zurich: week = %s, want 2026-10-12", got)
 	}
+
+	// The same take lands on Sunday in UTC but Monday in Zurich.
+	for loc, want := range map[*time.Location]string{time.UTC: "2026-10-11", zurich: "2026-10-12"} {
+		resp, err := weeklyStats(db, user.ID, now.In(loc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(resp.Daily) != 1 || resp.Daily[0].Date != want || resp.Daily[0].SessionCount != 1 || resp.Daily[0].MinutesPlayed != 1 {
+			t.Errorf("%s: daily = %+v, want one minute on %s", loc, resp.Daily, want)
+		}
+	}
 }
 
 func TestPracticeStreak(t *testing.T) {

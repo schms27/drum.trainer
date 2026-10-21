@@ -513,13 +513,16 @@ Practice statistics for the trailing 12 months.
   "weekly": [
     { "week_start": "2026-10-12", "session_count": 8, "minutes_played": 1.2, "tracks_practiced": 2 }
   ],
+  "daily": [
+    { "date": "2026-10-14", "session_count": 3, "minutes_played": 0.5 }
+  ],
   "totals": { "sessions": 8, "minutes_played": 1.2, "tracks_practiced": 2 },
   "streak_days": 3,
   "practiced_today": true
 }
 ```
 
-`weekly` always has 52 entries ending with the current week. `streak_days` counts consecutive days with at least one take, ending today — or yesterday, so a streak isn't shown as lost before today's practice.
+`weekly` always has 52 entries ending with the current week. `daily` lists only the days with at least one take in the trailing year, oldest first, in the `tz` time zone (it feeds the Progress page's practice calendar). `streak_days` counts consecutive days with at least one take, ending today — or yesterday, so a streak isn't shown as lost before today's practice.
 
 ---
 
