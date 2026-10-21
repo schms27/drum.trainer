@@ -3,6 +3,7 @@
 	import type { Track } from '$lib/types/track';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Sparkline from '$lib/components/charts/Sparkline.svelte';
+	import TagChip from '$lib/components/tags/TagChip.svelte';
 	import { formatPercent, formatRelativeDate, hitRateTone, toneText } from '$lib/score-format';
 
 	let { track }: { track: Track } = $props();
@@ -37,6 +38,18 @@
 				<span class="text-fg-subtle">From a share link</span>
 			{/if}
 		</p>
+		{#if track.tags?.length}
+			<ul class="flex flex-wrap gap-1 mt-2" aria-label="Tags">
+				{#each track.tags.slice(0, 3) as tag (tag.id)}
+					<li class="min-w-0"><TagChip {tag} /></li>
+				{/each}
+				{#if track.tags.length > 3}
+					<li class="text-xs text-fg-subtle self-center" title={track.tags.slice(3).map((t) => t.name).join(', ')}>
+						+{track.tags.length - 3}
+					</li>
+				{/if}
+			</ul>
+		{/if}
 	</div>
 
 	{#if stats && stats.sessions > 0 && stats.best_hit_rate !== null}

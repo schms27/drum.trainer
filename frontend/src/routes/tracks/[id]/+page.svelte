@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Play, SlidersHorizontal, Trash, ChevronRight, Share2, Download, PencilRuler } from '@lucide/svelte';
-	import { deleteTrack, trackExportUrl, trackFileUrl } from '$lib/api/tracks';
+	import { Play, SlidersHorizontal, Trash, ChevronRight, Share2, Download, PencilRuler, Pencil } from '@lucide/svelte';
+	import { deleteTrack, renameTrack, trackExportUrl, trackFileUrl } from '$lib/api/tracks';
+	import TagPicker from '$lib/components/tags/TagPicker.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -62,6 +63,30 @@
 		return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 	}
 
+	// ── Rename ──────────────────────────────────────────────────────────────
+	let renaming = $state(false);
+	let newName = $state('');
+	let renameError = $state('');
+	function startRename() {
+		newName = track.name;
+		renameError = '';
+		renaming = true;
+	}
+	async function saveName(e: SubmitEvent) {
+		e.preventDefault();
+		const name = newName.trim();
+		if (!name || name === track.name) {
+			renaming = false;
+			return;
+		}
+		try {
+			track.name = await renameTrack(track.id, name);
+			renaming = false;
+		} catch (err: unknown) {
+			renameError = err instanceof Error ? err.message : 'Could not rename the track';
+		}
+	}
+
 	async function handleDelete() {
 		await deleteTrack(track.id);
 		goto('/');
@@ -76,6 +101,9 @@
 	back={{ href: '/', label: 'Library' }}
 >
 	{#snippet actions()}
+		<Button variant="ghost" onclick={startRename} disabled={renaming}>
+			<Pencil size={16} aria-hidden="true" /> Rename
+		</Button>
 		{#if !track.disabled}
 			<Button href="/session/{track.id}" variant="primary" size="lg">
 				<Play size={18} aria-hidden="true" /> Practice
@@ -83,6 +111,25 @@
 		{/if}
 	{/snippet}
 </PageHeader>
+
+{#if renaming}
+	<form class="flex flex-wrap items-center gap-2 -mt-2" onsubmit={saveName}>
+		<label class="sr-only" for="track-name">Track name</label>
+		<input
+			id="track-name"
+			bind:value={newName}
+			maxlength="100"
+			onkeydown={(e) => e.key === 'Escape' && (renaming = false)}
+			class="flex-1 min-w-[12rem] max-w-lg bg-control text-fg rounded-lg px-3 h-10 text-base border border-line focus:outline-none focus:ring-2 focus:ring-accent"
+		/>
+		<Button type="submit" variant="primary" disabled={!newName.trim()}>Save</Button>
+		<Button variant="ghost" onclick={() => (renaming = false)}>Cancel</Button>
+		{#if renameError}<p class="w-full text-sm text-bad" role="alert">{renameError}</p>{/if}
+		{#if track.share_token}<p class="w-full text-xs text-fg-subtle">The new name also shows on your share link{track.visibility === 'public' ? ' and in Explore' : ''}.</p>{/if}
+	</form>
+{/if}
+
+<TagPicker trackId={track.id} bind:tags={track.tags} />
 
 {#if track.disabled}
 	<Notice variant="error">

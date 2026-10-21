@@ -129,8 +129,14 @@ func (h *tracksHandler) list(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to load practice stats")
 		return
 	}
+	tags, err := dbpkg.TrackTags(h.db, user.ID, 0)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load tags")
+		return
+	}
 	for i := range tracks {
 		tracks[i].Stats = statsOrEmpty(stats, tracks[i].ID)
+		tracks[i].Tags = orEmptyTags(tags[tracks[i].ID])
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"tracks": tracks})
 }
@@ -170,6 +176,12 @@ func (h *tracksHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	track.Stats = statsOrEmpty(stats, id)
+	tags, err := dbpkg.TrackTags(h.db, user.ID, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load tags")
+		return
+	}
+	track.Tags = orEmptyTags(tags[id])
 
 	writeJSON(w, http.StatusOK, models.TrackWithNotes{Track: *track, Notes: notes})
 }

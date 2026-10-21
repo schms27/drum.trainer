@@ -52,6 +52,7 @@ func InsertTrack(db *DB, track *models.Track, notes []models.NoteEvent, userID i
 	}
 	track.ID = trackID
 	track.CreatedAt = ct.T
+	track.Tags = []models.TagRef{}
 	track.Visibility = models.VisibilityPrivate
 	return nil
 }
@@ -327,5 +328,6 @@ func scanTrack(s scanner) (*models.Track, error) {
 		t.DisabledReason = &disabledReason.String
 	}
 	t.CreatedAt = ct.T
+	t.Tags = []models.TagRef{} // filled by endpoints that list tags
 	return &t, nil
 }

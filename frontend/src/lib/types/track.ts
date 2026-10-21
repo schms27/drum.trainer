@@ -22,6 +22,8 @@ export interface Track {
 	notes_revision: number;
 	/** 'upload' for a MIDI file, 'editor' for a track created from scratch (no file). */
 	origin: 'upload' | 'editor';
+	/** The owner's own tags, sorted by name. */
+	tags: TagRef[];
 	created_at: string;
 	visibility: Visibility;
 	/** Link token while the track is shared; null when private. */
@@ -96,4 +98,12 @@ export interface PublicTrack {
 	listed_at: string;
 	/** How many people added it to their library. */
 	copies: number;
+}
+
+/** A tag as it appears on a track. */
+export interface TagRef {
+	id: number;
+	name: string;
+	/** A key of TAG_COLORS in $lib/tag-colors. */
+	color: string;
 }
