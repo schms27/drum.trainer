@@ -7,7 +7,14 @@ name: Release
 #    (git-cliff, see cliff.toml), or uses the bump you pick.
 # 3. Regenerates CHANGELOG.md, commits it to main and tags the commit.
 # 4. Creates a GitHub Release with the notes for this version.
-# 5. Builds and pushes versioned images (1.2.3, 1.2, 1).
+#
+# main is protected by a ruleset that requires the test checks, which the
+# changelog commit can't have yet. GitHub Actions can't be put on the bypass
+# list, so the commit and tag are pushed with RELEASE_TOKEN: a fine-grained
+# token of a repository admin (admins bypass the ruleset) with Contents
+# read/write on this repository. Unlike GITHUB_TOKEN pushes, these trigger
+# docker.yml, which builds `latest` for the commit and the versioned images
+# (1.2.3, 1.2, 1) for the tag.
 on:
   workflow_dispatch:
     inputs:
@@ -41,9 +48,19 @@ jobs:
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
+      - name: Check release token
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "::error::The RELEASE_TOKEN secret is missing. See the comment at the top of release.yml."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history and tags for the changelog
+          token: ${{ secrets.RELEASE_TOKEN }} # used by the push below
 
       - uses: actions/setup-node@v7
         with:
@@ -106,12 +123,3 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
         run: gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag
-
-  images:
-    needs: [release]
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/images.yml
-    with:
-      ref: refs/tags/${{ needs.release.outputs.tag }}
