@@ -22,7 +22,7 @@ responsibility back onto the uploader as far as the law allows.
 | Track metadata (name, BPM, time sig, duration, note count) | yes | needed for the landing page |
 | Parsed drum notes (`track_notes`) | yes | this is the practice content |
 | Owner's note mapping | yes (copied as the starting mapping) | makes the copy usable immediately |
-| Original `.mid` file | **no** | may contain the full arrangement (melody, bass, chords); we only ever parsed channel 10. No download endpoint exists today; keep it that way |
+| Original `.mid` file | **no** | may contain the full arrangement (melody, bass, chords); we only ever parsed channel 10. The owner can download their own upload (`GET /tracks/:id/file`) and export its drum part (`GET /tracks/:id/export.mid`), but copies of shared tracks and removed tracks can't be downloaded by anyone (issue #12) |
 | Pilot tracks (audio) | **no** | audio is almost always a copyrighted sound recording — by far the highest-risk content. See "Pilot tracks" below |
 | Owner's sessions / scores / practice BPM | no | personal data |
 

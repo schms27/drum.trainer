@@ -62,6 +62,16 @@ export async function replaceTrackNotes(
 	});
 }
 
+/** The MIDI file as uploaded. Only for the owner's own, non-copied tracks. */
+export function trackFileUrl(trackId: number): string {
+	return `/api/v1/tracks/${trackId}/file`;
+}
+
+/** The track's drum notes rendered as a new MIDI file (drum channel only). */
+export function trackExportUrl(trackId: number): string {
+	return `/api/v1/tracks/${trackId}/export.mid`;
+}
+
 export async function deleteTrack(id: number): Promise<void> {
 	await apiFetch(`/tracks/${id}`, { method: 'DELETE' });
 }

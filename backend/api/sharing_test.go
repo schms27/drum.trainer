@@ -19,6 +19,7 @@ type sharingEnv struct {
 	t       *testing.T
 	router  http.Handler
 	db      *dbpkg.DB
+	store   *storage.Store
 	trackID int64
 	ip      string // client address sent as X-Real-IP, when set
 }
@@ -64,7 +65,7 @@ func newSharingEnv(t *testing.T) *sharingEnv {
 		}
 		trackID = track.ID
 	}
-	return &sharingEnv{t: t, router: NewRouter(db, store, 1<<20, cfg, 1<<20), db: db, trackID: trackID}
+	return &sharingEnv{t: t, router: NewRouter(db, store, 1<<20, cfg, 1<<20), db: db, store: store, trackID: trackID}
 }
 
 // do sends a request as the given user ("" for anonymous) and decodes a JSON

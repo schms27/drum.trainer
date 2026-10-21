@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Play, SlidersHorizontal, Trash, ChevronRight, Share2, PencilRuler } from '@lucide/svelte';
-	import { deleteTrack } from '$lib/api/tracks';
+	import { Play, SlidersHorizontal, Trash, ChevronRight, Share2, Download, PencilRuler } from '@lucide/svelte';
+	import { deleteTrack, trackExportUrl, trackFileUrl } from '$lib/api/tracks';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -206,7 +206,10 @@
 
 		{#if track.copied}
 			<Card title="Sharing" description="You added this track from someone’s share link, so it can’t be shared further.">
-				<p class="text-sm text-fg-muted">It’s your own copy: changes you make don’t affect the original.</p>
+				<p class="text-sm text-fg-muted">
+					It’s your own copy: changes you make don’t affect the original. Shared tracks stay in Drum Trainer, so a copy
+					can’t be downloaded as a file.
+				</p>
 			</Card>
 		{:else if !track.disabled}
 			<Card
@@ -221,6 +224,19 @@
 					<Share2 size={16} aria-hidden="true" />
 					{track.share_token ? 'Manage sharing' : 'Share'}
 				</Button>
+			</Card>
+		{/if}
+
+		{#if !track.copied && !track.disabled}
+			<Card title="Download" description="Your file as you uploaded it, or just the drum part as a new MIDI file.">
+				<div class="flex flex-wrap gap-2">
+					<Button href={trackFileUrl(track.id)} download={track.filename} variant="secondary">
+						<Download size={16} aria-hidden="true" /> Original file
+					</Button>
+					<Button href={trackExportUrl(track.id)} download="" variant="secondary">
+						<Download size={16} aria-hidden="true" /> Drum part (.mid)
+					</Button>
+				</div>
 			</Card>
 		{/if}
 
