@@ -7,8 +7,16 @@ export type WeekStat = {
 	tracks_practiced: number;
 };
 
+export type DayStat = {
+	date: string; // "2026-10-21" in the browser's time zone
+	session_count: number;
+	minutes_played: number;
+};
+
 export type StatsData = {
 	weekly: WeekStat[];
+	/** Days with at least one take in the past year, oldest first. */
+	daily: DayStat[];
 	totals: {
 		sessions: number;
 		minutes_played: number;

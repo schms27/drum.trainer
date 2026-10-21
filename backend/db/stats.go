@@ -1,6 +1,7 @@
 package db
 
 import (
+	"sort"
 	"time"
 
 	"github.com/simu/drum-trainer/backend/models"
@@ -97,12 +98,27 @@ func weeklyStats(db *DB, userID int64, now time.Time) (*models.StatsResponse, er
 	}
 
 	days := make(map[string]bool, len(entries))
+	dayMap := make(map[string]*models.DayStat)
 	for _, e := range entries {
-		days[e.createdAt.Format("2006-01-02")] = true
+		key := e.createdAt.Format("2006-01-02")
+		days[key] = true
+		d := dayMap[key]
+		if d == nil {
+			d = &models.DayStat{Date: key}
+			dayMap[key] = d
+		}
+		d.SessionCount++
+		d.MinutesPlayed += e.durationMs / 60_000
 	}
 	streak, today := practiceStreak(days, now)
 
-	return &models.StatsResponse{Weekly: weekly, Totals: totals, StreakDays: streak, PracticedToday: today}, nil
+	daily := make([]models.DayStat, 0, len(dayMap))
+	for _, d := range dayMap {
+		daily = append(daily, *d)
+	}
+	sort.Slice(daily, func(i, j int) bool { return daily[i].Date < daily[j].Date })
+
+	return &models.StatsResponse{Weekly: weekly, Daily: daily, Totals: totals, StreakDays: streak, PracticedToday: today}, nil
 }
 
 // practiceStreak counts consecutive practice days (keys "2006-01-02" in now's
