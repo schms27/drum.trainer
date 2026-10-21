@@ -101,6 +101,30 @@ Fetch a single track with all its parsed notes and its `stats`. Used by the trac
 
 ---
 
+### PATCH /api/v1/tracks/:id
+
+Renames a track: `{ "name": "My groove" }` (1–100 characters, trimmed). Renaming a shared track changes the name on its share link and in Explore, and is logged in the share audit trail. Copies are renamed independently.
+
+**Response `200 OK`:** `{ "name": "My groove" }` · `400` invalid name · `404` track not found
+
+---
+
+## Tags
+
+A user's own labels for their tracks. Tags are private: never shared, not shown on share links or in Explore, and copies of shared tracks don't receive them. Every track object carries `tags: [{ "id", "name", "color" }]`, sorted by name.
+
+`color` is one of `gray`, `red`, `orange`, `amber`, `green`, `teal`, `sky`, `blue`, `violet`, `pink`; the frontend maps each to a chip style readable in light and dark mode. Names are 1–30 characters (whitespace collapsed) and unique per user, ignoring case.
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/api/v1/tags` | — | `{ "tags": [{ "id", "name", "color", "track_count" }], "colors": [...] }` |
+| `POST` | `/api/v1/tags` | `{ "name", "color" }` | `201` the tag · `400` invalid · `409` name taken |
+| `PATCH` | `/api/v1/tags/:id` | `{ "name"?, "color"? }` | `204` · `400` · `404` · `409` |
+| `DELETE` | `/api/v1/tags/:id` | — | `204`; the tag is removed from all tracks |
+| `PUT` | `/api/v1/tracks/:id/tags` | `{ "tag_ids": [1, 2] }` | `{ "tags": [...] }` · `404` if the track or any tag isn't the user's (nothing changes) |
+
+---
+
 ### DELETE /api/v1/tracks/:id
 
 Delete a track, all associated sessions and scores (via SQLite CASCADE), and the `.mid` file from disk.

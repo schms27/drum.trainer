@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PencilRuler, Plus } from '@lucide/svelte';
+	import { PencilRuler, Plus, Tags } from '@lucide/svelte';
 	import MidiUpload from '$lib/components/upload/MidiUpload.svelte';
 	import TrackList from '$lib/components/tracks/TrackList.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
@@ -56,6 +56,9 @@
 {:else}
 	<PageHeader title="Library" subtitle="{tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}">
 		{#snippet actions()}
+			<Button href="/tags" variant="ghost">
+				<Tags size={16} aria-hidden="true" /> Tags
+			</Button>
 			<Button href="/tracks/new" variant="secondary">
 				<PencilRuler size={16} aria-hidden="true" /> New track
 			</Button>

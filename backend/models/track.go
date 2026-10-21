@@ -29,6 +29,8 @@ type Track struct {
 	// copied from). It stays in the library, but can no longer be practised.
 	Disabled       bool    `json:"disabled"`
 	DisabledReason *string `json:"disabled_reason"`
+	// Tags are the owner's own labels, sorted by name.
+	Tags []TagRef `json:"tags"`
 	// Stats is only filled by endpoints that report practice progress.
 	Stats *TrackStats `json:"stats,omitempty"`
 }

@@ -83,6 +83,11 @@ export function trackExportUrl(trackId: number): string {
 	return `/api/v1/tracks/${trackId}/export.mid`;
 }
 
+export async function renameTrack(trackId: number, name: string): Promise<string> {
+	const res = await apiFetch<{ name: string }>(`/tracks/${trackId}`, { method: 'PATCH', body: JSON.stringify({ name }) });
+	return res.name;
+}
+
 export async function deleteTrack(id: number): Promise<void> {
 	await apiFetch(`/tracks/${id}`, { method: 'DELETE' });
 }
