@@ -187,6 +187,8 @@ Located in `backend/scoring/scorer.go`.
 ### Match Window
 Each target note gets its own window: half the distance to its nearest neighbouring target in the same instrument group (ignoring notes at the exact same time), clamped to `[25ms, 200ms]`. An isolated note accepts hits up to ±200ms away; in a fast passage the window stops at the midpoint between notes, so a hit is judged against the note it was closest to.
 
+The clamps are in real time. Recorded hits are converted to the track's native tempo before scoring, so for a take at another tempo the scorer scales the clamps by the practice tempo ÷ native tempo: at 50 % speed they are `[12.5ms, 100ms]` in native time, which is still `[25ms, 200ms]` as played. The gap-based part of the window already scales with the tempo. Takes without a recorded tempo are scored at the native tempo.
+
 ### Algorithm: Closest-First Matching with Instrument Grouping
 
 Matching is done per instrument group (never across groups — a bass drum hit cannot match a snare target). This is critical for accuracy.

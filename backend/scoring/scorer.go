@@ -7,6 +7,9 @@ import (
 	"github.com/simu/drum-trainer/backend/models"
 )
 
+// The window clamps are in real time, i.e. as the player hears it. Target and
+// hit times are in the track's native tempo, so for a take at another tempo
+// the clamps are scaled to native time (see ScoreAtTempo).
 const (
 	// maxMatchWindowMs is the widest a target's match window can be: an
 	// isolated note accepts hits up to ±200ms away.
@@ -22,9 +25,10 @@ const (
 //   - Matching is performed per instrument group so a bass drum hit cannot
 //     steal a snare match.
 //   - Each target gets its own window: half the distance to its nearest
-//     neighbouring target in the same group, clamped to [25ms, 200ms]. In fast
-//     passages windows therefore stop at the midpoint between notes, so a hit
-//     is judged against the note it was closest to rather than a neighbour.
+//     neighbouring target in the same group, clamped to [25ms, 200ms] of real
+//     time. In fast passages windows therefore stop at the midpoint between
+//     notes, so a hit is judged against the note it was closest to rather
+//     than a neighbour.
 //   - All (target, hit) pairs inside a window are assigned closest-first, so
 //     an earlier target cannot take a hit that is much closer to a later one.
 //   - Unmatched target notes → misses.
@@ -37,6 +41,19 @@ func Score(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, in
 // target notes (from the MIDI file) and the recorded hits (from the kit),
 // since a file and a kit may number the same drum differently.
 func ScoreWithGroups(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, targetGroup, hitGroup func(int) string) *models.ScoreResult {
+	return ScoreAtTempo(targetNotes, recordedHits, targetGroup, hitGroup, 1)
+}
+
+// ScoreAtTempo is ScoreWithGroups for a take played at `rate` times the
+// track's native tempo (practice BPM / track BPM; 0.5 = half speed). Times
+// stay in native milliseconds, but the [25ms, 200ms] window clamps apply in
+// real time: at half speed a real 200ms is 100 native ms, so the clamps
+// become [12.5ms, 100ms] native. The gap-based part of each window already
+// scales with the tempo. A rate <= 0 is treated as 1.
+func ScoreAtTempo(targetNotes []models.NoteEvent, recordedHits []models.RecordedHit, targetGroup, hitGroup func(int) string, rate float64) *models.ScoreResult {
+	if rate <= 0 {
+		rate = 1
+	}
 	// Group targets by instrument.
 	targetsByGroup := make(map[string][]models.NoteEvent)
 	for _, n := range targetNotes {
@@ -84,7 +101,7 @@ func ScoreWithGroups(targetNotes []models.NoteEvent, recordedHits []models.Recor
 		sort.Slice(targets, func(i, j int) bool { return targets[i].TimeMs < targets[j].TimeMs })
 		sort.Slice(hits, func(i, j int) bool { return hits[i].TimeMs < hits[j].TimeMs })
 
-		matchOf, usedHit := matchGroup(targets, hits)
+		matchOf, usedHit := matchGroup(targets, hits, rate)
 		var groupOffsets []float64
 		var groupMatched []models.MatchedHit
 
@@ -163,16 +180,17 @@ func ScoreWithGroups(targetNotes []models.NoteEvent, recordedHits []models.Recor
 }
 
 // matchGroup pairs time-sorted targets with time-sorted hits of one instrument
-// group. It returns, for each target, the index of its matched hit (or -1),
-// and for each hit whether it was used.
-func matchGroup(targets []models.NoteEvent, hits []models.RecordedHit) (matchOf []int, usedHit []bool) {
+// group, for a take at `rate` times the native tempo. It returns, for each
+// target, the index of its matched hit (or -1), and for each hit whether it
+// was used.
+func matchGroup(targets []models.NoteEvent, hits []models.RecordedHit, rate float64) (matchOf []int, usedHit []bool) {
 	type candidate struct {
 		target, hit int
 		dist        float64
 	}
 	var candidates []candidate
 	for i, t := range targets {
-		w := matchWindow(targets, i)
+		w := matchWindow(targets, i, rate)
 		// First hit not earlier than the window start.
 		k := sort.Search(len(hits), func(k int) bool { return hits[k].TimeMs >= t.TimeMs-w })
 		for ; k < len(hits) && hits[k].TimeMs <= t.TimeMs+w; k++ {
@@ -196,11 +214,12 @@ func matchGroup(targets []models.NoteEvent, hits []models.RecordedHit) (matchOf 
 	return matchOf, usedHit
 }
 
-// matchWindow returns the ±window (ms) for targets[i]: half the gap to the
-// nearest neighbouring target at a different time, clamped to
-// [minMatchWindowMs, maxMatchWindowMs]. Notes at the exact same time (e.g. the
-// same drum on two note numbers) are skipped so they don't shrink the window.
-func matchWindow(targets []models.NoteEvent, i int) float64 {
+// matchWindow returns the ±window (native ms) for targets[i]: half the gap to
+// the nearest neighbouring target at a different time, clamped to
+// [minMatchWindowMs, maxMatchWindowMs] in real time, i.e. scaled by rate.
+// Notes at the exact same time (e.g. the same drum on two note numbers) are
+// skipped so they don't shrink the window.
+func matchWindow(targets []models.NoteEvent, i int, rate float64) float64 {
 	t := targets[i].TimeMs
 	gap := math.Inf(1)
 	for j := i - 1; j >= 0; j-- {
@@ -215,7 +234,7 @@ func matchWindow(targets []models.NoteEvent, i int) float64 {
 			break
 		}
 	}
-	return math.Max(minMatchWindowMs, math.Min(maxMatchWindowMs, gap/2))
+	return math.Max(minMatchWindowMs*rate, math.Min(maxMatchWindowMs*rate, gap/2))
 }
 
 func safeDiv(a, b float64) float64 {

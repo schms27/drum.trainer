@@ -124,8 +124,13 @@ func (h *sessionsHandler) create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Run the scoring algorithm.
-	score := scoring.ScoreWithGroups(targetNotes, req.Hits, targetGroup, hitGroup)
+	// Run the scoring algorithm. Hits arrive in native-tempo time; the rate
+	// lets the scorer apply its window limits in real time.
+	rate := 1.0
+	if req.PracticeBPM != nil && track.BPM > 0 {
+		rate = *req.PracticeBPM / track.BPM
+	}
+	score := scoring.ScoreAtTempo(targetNotes, req.Hits, targetGroup, hitGroup, rate)
 
 	session := &models.Session{
 		TrackID:    req.TrackID,
