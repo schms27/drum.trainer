@@ -82,6 +82,8 @@ func NewRouter(db *dbpkg.DB, store *storage.Store, maxUploadBytes int64, cfg con
 			r.Get("/tracks/{id}/mapping", th.getMapping)
 			r.Put("/tracks/{id}/mapping", th.updateMapping)
 			r.Put("/tracks/{id}/mix", th.setMix)
+			r.Get("/tracks/{id}/file", th.download)
+			r.Get("/tracks/{id}/export.mid", th.export)
 
 			// Sharing.
 			r.Put("/tracks/{id}/sharing", shh.share)

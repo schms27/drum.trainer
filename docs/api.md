@@ -112,6 +112,17 @@ Delete a track, all associated sessions and scores (via SQLite CASCADE), and the
 
 ---
 
+### GET /api/v1/tracks/:id/file · GET /api/v1/tracks/:id/export.mid
+
+Downloads for the track's owner (`Content-Disposition: attachment`, `audio/midi`):
+
+- `/file` returns the MIDI file exactly as uploaded, under its original filename.
+- `/export.mid` renders the track's drum notes as a new type-0 MIDI file: channel 10 only, with the track's name, tempo and time signature, as `<name> (drums).mid`.
+
+Copies of shared tracks and tracks removed by moderation can't be downloaded: both return `404`, like a track that doesn't exist or belongs to someone else. Shared tracks are only ever handed out as notes inside the app.
+
+---
+
 ### PUT /api/v1/tracks/:id/mix
 
 Saves the session page's mixer for a track. Levels are 0–1; `null` clears a level, so the active kit profile's default (or full level) applies. Backing tracks that don't belong to the track are ignored.

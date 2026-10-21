@@ -18,7 +18,7 @@
 		<h2>Your tracks</h2>
 		<p>
 			You keep all rights to the tracks you upload. Tracks are private unless you share them. We store them only to
-			run Drum Trainer for you.
+			run Drum Trainer for you, and you can download your own uploads again at any time.
 		</p>
 	</section>
 
@@ -28,6 +28,7 @@
 		<ul>
 			<li>anyone with the link can see the track’s name, tempo and opening bars, and signed-in users can add a copy of its drum notes to their own library;</li>
 			<li>only the drum notes are shared, not your original MIDI file, backing tracks or practice history;</li>
+			<li>people who add a copy can practise it in Drum Trainer but can’t download it as a file;</li>
 			<li>copies people have already added stay in their libraries if you reset the link or stop sharing.</li>
 		</ul>
 	</section>
