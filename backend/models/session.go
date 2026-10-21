@@ -14,6 +14,9 @@ type Session struct {
 	DurationMs float64   `json:"duration_ms"`
 	HitCount   int       `json:"hit_count"`
 	CreatedAt  time.Time `json:"created_at"`
+	// NotesRevision is the track's notes revision the take was played
+	// against; nil for takes recorded before revisions existed.
+	NotesRevision *int `json:"notes_revision"`
 	SessionTempo
 }
 
@@ -79,14 +82,15 @@ type ScoreResult struct {
 
 // SessionSummary is a lightweight session row used in list responses.
 type SessionSummary struct {
-	ID           int64     `json:"id"`
-	TrackID      int64     `json:"track_id"`
-	HitCount     int       `json:"hit_count"`
-	MatchedCount int       `json:"matched_count"`
-	TargetCount  int       `json:"target_count"`
-	HitRate      float64   `json:"hit_rate"`
-	AvgOffsetMs  float64   `json:"avg_offset_ms"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID            int64     `json:"id"`
+	TrackID       int64     `json:"track_id"`
+	HitCount      int       `json:"hit_count"`
+	MatchedCount  int       `json:"matched_count"`
+	TargetCount   int       `json:"target_count"`
+	HitRate       float64   `json:"hit_rate"`
+	AvgOffsetMs   float64   `json:"avg_offset_ms"`
+	CreatedAt     time.Time `json:"created_at"`
+	NotesRevision *int      `json:"notes_revision"` // see Session.NotesRevision
 	SessionTempo
 }
 

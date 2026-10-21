@@ -18,8 +18,8 @@ func InsertSession(db *DB, session *models.Session, hits []models.RecordedHit, s
 
 	var sessionID int64
 	err = tx.QueryRow(
-		db.Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count, user_id, practice_bpm, track_bpm)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
+		db.Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count, user_id, practice_bpm, track_bpm, notes_revision)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
 		session.TrackID,
 		session.StartedAt.UTC().Format(time.RFC3339),
 		session.EndedAt.UTC().Format(time.RFC3339),
@@ -28,6 +28,7 @@ func InsertSession(db *DB, session *models.Session, hits []models.RecordedHit, s
 		userID,
 		session.PracticeBPM,
 		session.TrackBPM,
+		session.NotesRevision,
 	).Scan(&sessionID)
 	if err != nil {
 		return 0, fmt.Errorf("insert session: %w", err)
@@ -96,7 +97,7 @@ func InsertSession(db *DB, session *models.Session, hits []models.RecordedHit, s
 // GetSession returns a session's metadata by ID scoped to the given user.
 func GetSession(db *DB, id, userID int64) (*models.Session, error) {
 	row := db.QueryRow(
-		db.Rebind(`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at, practice_bpm, track_bpm
+		db.Rebind(`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at, practice_bpm, track_bpm, notes_revision
 		 FROM sessions WHERE id = ? AND user_id = ?`), id, userID,
 	)
 	return scanSession(row)
@@ -130,7 +131,7 @@ func ListSessions(db *DB, userID int64, filter models.SessionFilter, limit int, 
 	query := `
 		SELECT s.id, s.track_id, s.hit_count,
 		       COALESCE(SUM(si.matched_count), 0), COALESCE(SUM(si.target_count), 0),
-		       ss.hit_rate, ss.avg_offset_ms, s.created_at, s.practice_bpm, s.track_bpm
+		       ss.hit_rate, ss.avg_offset_ms, s.created_at, s.practice_bpm, s.track_bpm, s.notes_revision
 		FROM sessions s
 		JOIN session_scores ss ON ss.session_id = s.id
 		LEFT JOIN session_instrument_scores si ON si.session_id = s.id
@@ -153,7 +154,7 @@ func ListSessions(db *DB, userID int64, filter models.SessionFilter, limit int, 
 		query += ` AND s.id < ?`
 		args = append(args, before)
 	}
-	query += ` GROUP BY s.id, s.track_id, s.hit_count, ss.hit_rate, ss.avg_offset_ms, s.created_at, s.practice_bpm, s.track_bpm`
+	query += ` GROUP BY s.id, s.track_id, s.hit_count, ss.hit_rate, ss.avg_offset_ms, s.created_at, s.practice_bpm, s.track_bpm, s.notes_revision`
 	query += ` ORDER BY s.id DESC`
 	// Fetch one extra row to determine whether more pages exist.
 	query += ` LIMIT ?`
@@ -170,7 +171,7 @@ func ListSessions(db *DB, userID int64, filter models.SessionFilter, limit int, 
 		var s models.SessionSummary
 		var ct scanTime
 		var practiceBPM, trackBPM *float64
-		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.MatchedCount, &s.TargetCount, &s.HitRate, &s.AvgOffsetMs, &ct, &practiceBPM, &trackBPM); err != nil {
+		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.MatchedCount, &s.TargetCount, &s.HitRate, &s.AvgOffsetMs, &ct, &practiceBPM, &trackBPM, &s.NotesRevision); err != nil {
 			return nil, false, err
 		}
 		s.CreatedAt = ct.T
@@ -193,7 +194,7 @@ func scanSession(s scanner) (*models.Session, error) {
 	var startedAt, endedAt scanTime
 	var ct scanTime
 	var practiceBPM, trackBPM *float64
-	err := s.Scan(&sess.ID, &sess.TrackID, &startedAt, &endedAt, &sess.DurationMs, &sess.HitCount, &ct, &practiceBPM, &trackBPM)
+	err := s.Scan(&sess.ID, &sess.TrackID, &startedAt, &endedAt, &sess.DurationMs, &sess.HitCount, &ct, &practiceBPM, &trackBPM, &sess.NotesRevision)
 	if err != nil {
 		return nil, err
 	}

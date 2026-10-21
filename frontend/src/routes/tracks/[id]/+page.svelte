@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Play, SlidersHorizontal, Trash, ChevronRight, Share2 } from '@lucide/svelte';
+	import { Play, SlidersHorizontal, Trash, ChevronRight, Share2, PencilRuler } from '@lucide/svelte';
 	import { deleteTrack } from '$lib/api/tracks';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -191,10 +191,17 @@
 	</Card>
 
 	<div class="flex flex-col gap-4">
-		<Card title="Pad mapping" description="Which instrument each MIDI note in this file belongs to.">
-			<Button href="/tracks/{track.id}/mapping" variant="secondary">
-				<SlidersHorizontal size={16} aria-hidden="true" /> Edit pad mapping
-			</Button>
+		<Card title="Notes" description="Change the drum part: simplify it for a smaller kit, or add, move and remove hits.">
+			<div class="flex flex-wrap gap-2">
+				{#if !track.disabled}
+					<Button href="/tracks/{track.id}/edit" variant="secondary">
+						<PencilRuler size={16} aria-hidden="true" /> Edit notes
+					</Button>
+				{/if}
+				<Button href="/tracks/{track.id}/mapping" variant="secondary">
+					<SlidersHorizontal size={16} aria-hidden="true" /> Edit pad mapping
+				</Button>
+			</div>
 		</Card>
 
 		{#if track.copied}

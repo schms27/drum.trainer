@@ -16,6 +16,7 @@ type Track struct {
 	TimeSigNumerator int       `json:"time_sig_numerator"` // beats per bar (e.g. 4 for 4/4, 3 for 3/4)
 	PracticeBPM      *float64  `json:"practice_bpm"`       // nil = use native BPM
 	MetronomeVolume  *float64  `json:"metronome_volume"`   // 0–1; nil = use the kit profile's default
+	NotesRevision    int       `json:"notes_revision"`     // bumped on every edit of the notes
 	CreatedAt        time.Time `json:"created_at"`
 	// Sharing. Only the owner ever receives a Track, so the token is safe here.
 	Visibility    string  `json:"visibility"`      // "private" | "unlisted"

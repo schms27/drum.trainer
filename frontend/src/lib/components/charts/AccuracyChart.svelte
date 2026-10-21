@@ -7,7 +7,7 @@
 		takes,
 		label = 'Notes hit per take'
 	}: {
-		takes: { id: number; hit_rate: number; created_at: string; tempo_percent?: number | null; practice_bpm?: number | null }[];
+		takes: { id: number; hit_rate: number; created_at: string; tempo_percent?: number | null; practice_bpm?: number | null; notes_revision?: number | null }[];
 		label?: string;
 	} = $props();
 
@@ -42,6 +42,15 @@
 	};
 	const showLegend = $derived(takes.some(offTempo));
 
+	// Where the track's notes were edited between two takes: a dashed line
+	// halfway between them.
+	const edits = $derived(
+		takes.flatMap((t, i) => {
+			const prev = takes[i - 1]?.notes_revision;
+			return i > 0 && prev != null && t.notes_revision != null && prev !== t.notes_revision ? [i] : [];
+		})
+	);
+
 	function shortDate(iso: string) {
 		return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 	}
@@ -51,6 +60,12 @@
 	{#each Y_TICKS as tick (tick)}
 		<line x1={PAD.left} y1={y(tick)} x2={W - PAD.right} y2={y(tick)} style:stroke="var(--chart-grid)" />
 		<text x={PAD.left - 6} y={y(tick) + 4} text-anchor="end" font-size="11" style:fill="var(--fg-subtle)">{tick * 100}%</text>
+	{/each}
+
+	{#each edits as i (i)}
+		{@const ex = (x(i - 1) + x(i)) / 2}
+		<line x1={ex} x2={ex} y1={PAD.top} y2={H - PAD.bottom} style:stroke="var(--fg-subtle)" stroke-dasharray="4 3" />
+		<text x={ex + 4} y={PAD.top + 10} font-size="10" style:fill="var(--fg-subtle)">notes edited</text>
 	{/each}
 
 	{#if takes.length > 1}

@@ -112,6 +112,26 @@ Delete a track, all associated sessions and scores (via SQLite CASCADE), and the
 
 ---
 
+### PUT /api/v1/tracks/:id/notes
+
+Replaces a track's notes with an edited set (the track editor). Instruments follow the track's note mapping.
+
+**Request body:**
+```json
+{
+  "notes": [{ "note_number": 36, "time_ms": 0, "velocity": 100 }],
+  "duration_ms": 16000
+}
+```
+
+`note_number` 0–127, `velocity` 1–127, `time_ms` 0–2 h in the track's native tempo, at most 50 000 notes. `duration_ms` is optional; without it the track keeps its length, extended to the last note if that is later.
+
+The track's `notes_revision` is bumped, and new takes record the revision they were played against (`notes_revision` on sessions; `null` for older takes), so Progress can mark where the notes changed. Editing a shared track is logged in the share audit trail; copies others already added keep their notes.
+
+**Response `200 OK`:** the updated track with its notes, like `GET /tracks/:id` · `400` invalid notes · `404` track not found · `409` track removed by moderation
+
+---
+
 ### PUT /api/v1/tracks/:id/mix
 
 Saves the session page's mixer for a track. Levels are 0–1; `null` clears a level, so the active kit profile's default (or full level) applies. Backing tracks that don't belong to the track are ignored.
