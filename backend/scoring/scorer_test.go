@@ -444,3 +444,48 @@ func TestScoreWithGroups_SeparateTargetAndHitMappings(t *testing.T) {
 		t.Errorf("instrument = %q, want Snare", r.MatchedHits[0].Instrument)
 	}
 }
+
+// --- tempo ---
+
+func TestScoreAtTempo_ClampsApplyInRealTime(t *testing.T) {
+	// An isolated note and a hit 150 native ms late. At half speed that is
+	// 300ms late in real time: outside the 200ms real-time cap.
+	targets := []models.NoteEvent{note(38, 1000)}
+	hits := []models.RecordedHit{hit(38, 1150)}
+	if r := scoring.ScoreAtTempo(targets, hits, singleGroup, singleGroup, 0.5); r.HitRate != 0 {
+		t.Errorf("half speed: hit rate %.2f, want 0 (300ms late in real time)", r.HitRate)
+	}
+	if r := scoring.ScoreAtTempo(targets, hits, singleGroup, singleGroup, 1); r.HitRate != 1 {
+		t.Errorf("original tempo: hit rate %.2f, want 1 (150ms late)", r.HitRate)
+	}
+	// 90 native ms late at half speed is 180ms real: still inside the cap.
+	if r := scoring.ScoreAtTempo(targets, []models.RecordedHit{hit(38, 1090)}, singleGroup, singleGroup, 0.5); r.HitRate != 1 {
+		t.Errorf("half speed, 180ms real: hit rate %.2f, want 1", r.HitRate)
+	}
+}
+
+func TestScoreAtTempo_FloorScalesWithTempo(t *testing.T) {
+	// Notes 30 native ms apart: the gap-based window is 15ms, below the floor.
+	// At 1.5× speed the 25ms real floor is 37.5 native ms, so a hit 30 native
+	// ms off (20ms real) still matches the first note.
+	targets := []models.NoteEvent{note(38, 1000), note(38, 1030)}
+	hits := []models.RecordedHit{hit(38, 970)}
+	if r := scoring.ScoreAtTempo(targets, hits, singleGroup, singleGroup, 1.5); len(r.MatchedHits) != 1 {
+		t.Errorf("1.5x: %d matches, want 1", len(r.MatchedHits))
+	}
+	// At the original tempo the floor is 25 native ms, so 30ms off misses.
+	if r := scoring.ScoreAtTempo(targets, hits, singleGroup, singleGroup, 1); len(r.MatchedHits) != 0 {
+		t.Errorf("1x: %d matches, want 0", len(r.MatchedHits))
+	}
+}
+
+func TestScoreAtTempo_RateOneMatchesScoreWithGroups(t *testing.T) {
+	targets := []models.NoteEvent{note(36, 0), note(38, 500), note(36, 1000), note(38, 1020)}
+	hits := []models.RecordedHit{hit(36, 10), hit(38, 480), hit(36, 1190), hit(38, 1025)}
+	a := scoring.ScoreWithGroups(targets, hits, kickOrSnare, kickOrSnare)
+	b := scoring.ScoreAtTempo(targets, hits, kickOrSnare, kickOrSnare, 1)
+	c := scoring.ScoreAtTempo(targets, hits, kickOrSnare, kickOrSnare, 0) // unknown tempo
+	if a.HitRate != b.HitRate || a.HitRate != c.HitRate || len(a.MatchedHits) != len(b.MatchedHits) {
+		t.Errorf("rate 1 differs: %.2f vs %.2f vs %.2f", a.HitRate, b.HitRate, c.HitRate)
+	}
+}
