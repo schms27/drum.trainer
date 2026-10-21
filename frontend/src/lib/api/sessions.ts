@@ -1,4 +1,5 @@
 import type { SessionSummary, SessionWithScore, SubmitSessionRequest } from '$lib/types/session';
+import { tempoRange, type TempoFilter } from '$lib/tempo';
 import { apiFetch } from './client';
 
 export async function submitSession(req: SubmitSessionRequest): Promise<SessionWithScore> {
@@ -17,9 +18,14 @@ export interface SessionPage {
 	hasMore: boolean;
 }
 
-export async function listSessions(opts: { trackId?: number; limit?: number; before?: number } = {}): Promise<SessionPage> {
+export async function listSessions(
+	opts: { trackId?: number; limit?: number; before?: number; tempo?: TempoFilter } = {}
+): Promise<SessionPage> {
 	const params = new URLSearchParams();
 	if (opts.trackId) params.set('track_id', String(opts.trackId));
+	const { min, max } = tempoRange(opts.tempo ?? 'all');
+	if (min != null) params.set('tempo_min', String(min));
+	if (max != null) params.set('tempo_max', String(max));
 	if (opts.limit) params.set('limit', String(opts.limit));
 	if (opts.before) params.set('before', String(opts.before));
 	const qs = params.size ? `?${params}` : '';

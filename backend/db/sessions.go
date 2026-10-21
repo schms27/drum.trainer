@@ -18,14 +18,16 @@ func InsertSession(db *DB, session *models.Session, hits []models.RecordedHit, s
 
 	var sessionID int64
 	err = tx.QueryRow(
-		db.Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count, user_id)
-		 VALUES (?, ?, ?, ?, ?, ?) RETURNING id`),
+		db.Rebind(`INSERT INTO sessions (track_id, started_at, ended_at, duration_ms, hit_count, user_id, practice_bpm, track_bpm)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
 		session.TrackID,
 		session.StartedAt.UTC().Format(time.RFC3339),
 		session.EndedAt.UTC().Format(time.RFC3339),
 		session.DurationMs,
 		session.HitCount,
 		userID,
+		session.PracticeBPM,
+		session.TrackBPM,
 	).Scan(&sessionID)
 	if err != nil {
 		return 0, fmt.Errorf("insert session: %w", err)
@@ -94,7 +96,7 @@ func InsertSession(db *DB, session *models.Session, hits []models.RecordedHit, s
 // GetSession returns a session's metadata by ID scoped to the given user.
 func GetSession(db *DB, id, userID int64) (*models.Session, error) {
 	row := db.QueryRow(
-		db.Rebind(`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at
+		db.Rebind(`SELECT id, track_id, started_at, ended_at, duration_ms, hit_count, created_at, practice_bpm, track_bpm
 		 FROM sessions WHERE id = ? AND user_id = ?`), id, userID,
 	)
 	return scanSession(row)
@@ -116,30 +118,42 @@ func GetSessionScore(db *DB, sessionID int64) (*models.ScoreResult, error) {
 	return &score, nil
 }
 
-// ListSessions returns a paginated list of sessions for a user, optionally filtered by track.
+// tempoPercentSQL is a take's tempo in whole percent of the track's native
+// tempo; it must match models.NewSessionTempo. NULL when the tempo is unknown.
+const tempoPercentSQL = `FLOOR(s.practice_bpm * 100.0 / s.track_bpm + 0.5)`
+
+// ListSessions returns a paginated list of sessions for a user, optionally filtered by track and tempo.
 // limit controls the page size; before is a cursor (session ID) — only sessions with id < before
 // are returned. Pass before=0 to start from the most recent session.
 // Returns (sessions, hasMore, error). hasMore is true when there are additional rows beyond limit.
-func ListSessions(db *DB, userID, trackID int64, limit int, before int64) ([]models.SessionSummary, bool, error) {
+func ListSessions(db *DB, userID int64, filter models.SessionFilter, limit int, before int64) ([]models.SessionSummary, bool, error) {
 	query := `
 		SELECT s.id, s.track_id, s.hit_count,
 		       COALESCE(SUM(si.matched_count), 0), COALESCE(SUM(si.target_count), 0),
-		       ss.hit_rate, ss.avg_offset_ms, s.created_at
+		       ss.hit_rate, ss.avg_offset_ms, s.created_at, s.practice_bpm, s.track_bpm
 		FROM sessions s
 		JOIN session_scores ss ON ss.session_id = s.id
 		LEFT JOIN session_instrument_scores si ON si.session_id = s.id
 		WHERE s.user_id = ?`
 	args := []any{userID}
 
-	if trackID > 0 {
+	if filter.TrackID > 0 {
 		query += ` AND s.track_id = ?`
-		args = append(args, trackID)
+		args = append(args, filter.TrackID)
+	}
+	if filter.TempoMin != nil {
+		query += ` AND ` + tempoPercentSQL + ` >= ?`
+		args = append(args, *filter.TempoMin)
+	}
+	if filter.TempoMax != nil {
+		query += ` AND ` + tempoPercentSQL + ` <= ?`
+		args = append(args, *filter.TempoMax)
 	}
 	if before > 0 {
 		query += ` AND s.id < ?`
 		args = append(args, before)
 	}
-	query += ` GROUP BY s.id, s.track_id, s.hit_count, ss.hit_rate, ss.avg_offset_ms, s.created_at`
+	query += ` GROUP BY s.id, s.track_id, s.hit_count, ss.hit_rate, ss.avg_offset_ms, s.created_at, s.practice_bpm, s.track_bpm`
 	query += ` ORDER BY s.id DESC`
 	// Fetch one extra row to determine whether more pages exist.
 	query += ` LIMIT ?`
@@ -155,10 +169,12 @@ func ListSessions(db *DB, userID, trackID int64, limit int, before int64) ([]mod
 	for rows.Next() {
 		var s models.SessionSummary
 		var ct scanTime
-		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.MatchedCount, &s.TargetCount, &s.HitRate, &s.AvgOffsetMs, &ct); err != nil {
+		var practiceBPM, trackBPM *float64
+		if err := rows.Scan(&s.ID, &s.TrackID, &s.HitCount, &s.MatchedCount, &s.TargetCount, &s.HitRate, &s.AvgOffsetMs, &ct, &practiceBPM, &trackBPM); err != nil {
 			return nil, false, err
 		}
 		s.CreatedAt = ct.T
+		s.SessionTempo = models.NewSessionTempo(practiceBPM, trackBPM)
 		list = append(list, s)
 	}
 	if err := rows.Err(); err != nil {
@@ -176,10 +192,12 @@ func scanSession(s scanner) (*models.Session, error) {
 	var sess models.Session
 	var startedAt, endedAt scanTime
 	var ct scanTime
-	err := s.Scan(&sess.ID, &sess.TrackID, &startedAt, &endedAt, &sess.DurationMs, &sess.HitCount, &ct)
+	var practiceBPM, trackBPM *float64
+	err := s.Scan(&sess.ID, &sess.TrackID, &startedAt, &endedAt, &sess.DurationMs, &sess.HitCount, &ct, &practiceBPM, &trackBPM)
 	if err != nil {
 		return nil, err
 	}
+	sess.SessionTempo = models.NewSessionTempo(practiceBPM, trackBPM)
 	sess.StartedAt = startedAt.T
 	sess.EndedAt = endedAt.T
 	sess.CreatedAt = ct.T

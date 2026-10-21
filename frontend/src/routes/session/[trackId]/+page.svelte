@@ -162,7 +162,8 @@
 				track_id: track.id,
 				started_at: startedAt,
 				ended_at: endedAt,
-				hits: scoringHits
+				hits: scoringHits,
+				practice_bpm: currentBpm
 			});
 			goto(`/results/${result.session.id}`);
 		} catch (e: unknown) {

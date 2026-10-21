@@ -272,6 +272,7 @@ Submit a completed recording session. The backend:
 | `hits[].note_number` | integer | MIDI note number (GM drum map) |
 | `hits[].time_ms` | float | Milliseconds from the start of the track, in the track's original tempo. May be slightly negative (down to −1000) for a note played just before the first beat after a count-in. |
 | `hits[].velocity` | integer | MIDI velocity 0–127 |
+| `practice_bpm` | float (optional) | Tempo the take was played at, 20–300. Stored with the session together with the track's native BPM; omitted means the tempo is unknown. |
 
 **Response `201 Created`:**
 ```json
@@ -283,7 +284,10 @@ Submit a completed recording session. The backend:
     "hit_count": 839,
     "started_at": "2026-02-19T10:05:00.000Z",
     "ended_at":   "2026-02-19T10:07:04.350Z",
-    "created_at": "2026-02-19T10:07:05Z"
+    "created_at": "2026-02-19T10:07:05Z",
+    "practice_bpm": 96,
+    "track_bpm": 120,
+    "tempo_percent": 80
   },
   "score": {
     "hit_rate": 0.93,
@@ -345,13 +349,15 @@ Submit a completed recording session. The backend:
 
 ### GET /api/v1/sessions
 
-List sessions, optionally filtered by track.
+List sessions, optionally filtered by track and tempo.
 
 **Query parameters:**
 
 | Param | Type | Description |
 |-------|------|-------------|
 | `track_id` | integer (optional) | Filter sessions for a specific track |
+| `tempo_min` | integer (optional) | Only takes played at at least this percentage of the track's native tempo |
+| `tempo_max` | integer (optional) | Only takes played at at most this percentage. `tempo_min=100&tempo_max=100` gives takes at the original tempo. Takes without a recorded tempo never match a tempo bound. |
 
 **Response `200 OK`:**
 ```json
@@ -363,7 +369,10 @@ List sessions, optionally filtered by track.
       "hit_count": 839,
       "hit_rate": 0.93,
       "avg_offset_ms": -12.3,
-      "created_at": "2026-02-19T10:07:05Z"
+      "created_at": "2026-02-19T10:07:05Z",
+      "practice_bpm": 96,
+      "track_bpm": 120,
+      "tempo_percent": 80
     }
   ]
 }

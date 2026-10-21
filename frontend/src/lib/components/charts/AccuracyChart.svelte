@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { formatPercent } from '$lib/score-format';
+	import { describeTempo, tempoKind } from '$lib/tempo';
 
 	// Notes hit per take over time. `takes` must be oldest first.
 	let {
 		takes,
 		label = 'Notes hit per take'
 	}: {
-		takes: { id: number; hit_rate: number; created_at: string }[];
+		takes: { id: number; hit_rate: number; created_at: string; tempo_percent?: number | null; practice_bpm?: number | null }[];
 		label?: string;
 	} = $props();
 
@@ -33,6 +34,14 @@
 			: [...new Set([0, Math.round((takes.length - 1) / 3), Math.round((2 * (takes.length - 1)) / 3), takes.length - 1])]
 	);
 
+	// Takes away from the original tempo are drawn hollow, so a jump in the
+	// line can be told apart from a change of tempo.
+	const offTempo = (t: (typeof takes)[number]) => {
+		const k = tempoKind(t.tempo_percent);
+		return k === 'slower' || k === 'faster';
+	};
+	const showLegend = $derived(takes.some(offTempo));
+
 	function shortDate(iso: string) {
 		return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 	}
@@ -48,9 +57,19 @@
 		<path d={path} fill="none" style:stroke="var(--accent-text)" stroke-width="2" stroke-linejoin="round" />
 	{/if}
 	{#each takes as take, i (take.id)}
-		<a href="/results/{take.id}" aria-label="Take on {shortDate(take.created_at)}: {formatPercent(take.hit_rate)}">
-			<circle cx={x(i)} cy={y(take.hit_rate)} r={take.hit_rate === best ? 5 : 3.5} style:fill="var(--accent-text)">
-				<title>{shortDate(take.created_at)}: {formatPercent(take.hit_rate)} of notes hit</title>
+		<a
+			href="/results/{take.id}"
+			aria-label="Take on {shortDate(take.created_at)}: {formatPercent(take.hit_rate)}, {describeTempo(take.tempo_percent, take.practice_bpm)}"
+		>
+			<circle
+				cx={x(i)}
+				cy={y(take.hit_rate)}
+				r={take.hit_rate === best ? 5 : 3.5}
+				style:fill={offTempo(take) ? 'var(--card)' : 'var(--accent-text)'}
+				style:stroke="var(--accent-text)"
+				stroke-width={offTempo(take) ? 2 : 0}
+			>
+				<title>{shortDate(take.created_at)}: {formatPercent(take.hit_rate)} of notes hit · {describeTempo(take.tempo_percent, take.practice_bpm)}</title>
 			</circle>
 		</a>
 	{/each}
@@ -61,3 +80,15 @@
 		</text>
 	{/each}
 </svg>
+
+{#if showLegend}
+	<p class="flex flex-wrap gap-4 text-xs text-fg-subtle mt-1" aria-hidden="true">
+		<span class="inline-flex items-center gap-1.5">
+			<svg width="10" height="10"><circle cx="5" cy="5" r="4" style:fill="var(--accent-text)" /></svg> Original tempo
+		</span>
+		<span class="inline-flex items-center gap-1.5">
+			<svg width="10" height="10"><circle cx="5" cy="5" r="3.5" style:fill="var(--card)" style:stroke="var(--accent-text)" stroke-width="1.5" /></svg>
+			Slower or faster (hover for the tempo)
+		</span>
+	</p>
+{/if}
