@@ -6,7 +6,10 @@
 	import TagChip from '$lib/components/tags/TagChip.svelte';
 	import { formatPercent, formatRelativeDate, hitRateTone, toneText } from '$lib/score-format';
 
-	let { track }: { track: Track } = $props();
+	import { highlight as highlightParts } from '$lib/library-filter';
+
+	let { track, highlight = [] }: { track: Track; highlight?: string[] } = $props();
+	const nameParts = $derived(highlightParts(track.name, highlight));
 
 	const stats = $derived(track.stats);
 
@@ -21,7 +24,7 @@
 		<h3 class="font-semibold text-fg leading-tight break-words">
 			<!-- The title link covers the whole card (see ::after), the Practice button sits above it. -->
 			<a href="/tracks/{track.id}" class="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none">
-				{track.name}
+				{#each nameParts as part, i (i)}{#if part.match}<mark class="bg-accent-soft text-fg rounded-sm">{part.text}</mark>{:else}{part.text}{/if}{/each}
 			</a>
 		</h3>
 		<p class="flex flex-wrap gap-x-3 text-xs text-fg-muted mt-1.5">
