@@ -1,11 +1,16 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	dbpkg "github.com/simu/drum-trainer/backend/db"
@@ -236,6 +241,101 @@ func (h *tracksHandler) setPracticeBPM(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// downloadableTrack loads a track the user may download: their own, not a
+// copy of someone else's shared track, and not removed by moderation. Copies
+// stay inside the app (the platform never hands out shared tracks as files),
+// and a removed track is not served to anyone. Anything else is a 404, like a
+// track that doesn't exist.
+func (h *tracksHandler) downloadableTrack(w http.ResponseWriter, r *http.Request) (*models.Track, bool) {
+	id, err := parseID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return nil, false
+	}
+	user := UserFromContext(r.Context())
+	track, err := dbpkg.GetTrack(h.db, id, user.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "track not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, "failed to fetch track")
+		}
+		return nil, false
+	}
+	if track.Copied || track.Disabled {
+		writeError(w, http.StatusNotFound, "track not found")
+		return nil, false
+	}
+	return track, true
+}
+
+// attachment sets a Content-Disposition header that downloads as filename.
+func attachment(w http.ResponseWriter, filename string) {
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+}
+
+// GET /api/v1/tracks/{id}/file
+// Returns the MIDI file exactly as the owner uploaded it.
+func (h *tracksHandler) download(w http.ResponseWriter, r *http.Request) {
+	track, ok := h.downloadableTrack(w, r)
+	if !ok {
+		return
+	}
+	if track.FilePath == "" {
+		writeError(w, http.StatusNotFound, "this track has no uploaded file")
+		return
+	}
+	f, err := h.store.Open(track.FilePath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to open MIDI file")
+		return
+	}
+	defer f.Close()
+	w.Header().Set("Content-Type", "audio/midi")
+	attachment(w, track.Filename)
+	http.ServeContent(w, r, track.Filename, time.Time{}, f)
+}
+
+// GET /api/v1/tracks/{id}/export.mid
+// Renders the track's drum notes (as practised, including edits) as a new
+// MIDI file: drum channel only, with the track's name, tempo and meter.
+func (h *tracksHandler) export(w http.ResponseWriter, r *http.Request) {
+	track, ok := h.downloadableTrack(w, r)
+	if !ok {
+		return
+	}
+	notes, err := dbpkg.GetTrackNotes(h.db, track.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch notes")
+		return
+	}
+	data, err := midipkg.WriteDrumMIDI(track.Name, notes, track.BPM, track.TimeSigNumerator)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to export MIDI")
+		return
+	}
+	w.Header().Set("Content-Type", "audio/midi")
+	attachment(w, exportFilename(track.Name))
+	http.ServeContent(w, r, "export.mid", time.Time{}, bytes.NewReader(data))
+}
+
+// exportFilename turns a track name into a safe "<name> (drums).mid".
+func exportFilename(name string) string {
+	clean := strings.Map(func(r rune) rune {
+		if r < 0x20 || strings.ContainsRune(`<>:"/\|?*`, r) {
+			return '_'
+		}
+		return r
+	}, strings.TrimSpace(name))
+	if ext := filepath.Ext(clean); strings.EqualFold(ext, ".mid") || strings.EqualFold(ext, ".midi") {
+		clean = strings.TrimSuffix(clean, ext)
+	}
+	if clean == "" {
+		clean = "track"
+	}
+	return clean + " (drums).mid"
 }
 
 // validVolume reports whether v is unset or a level between 0 and 1.
