@@ -12,6 +12,7 @@
   <a href="https://github.com/schms27/drum.trainer/actions/workflows/docker.yml?query=branch%3Amain"><img src="https://github.com/schms27/drum.trainer/actions/workflows/docker.yml/badge.svg?branch=main" alt="Build status on main"></a>
   <a href="https://github.com/schms27/drum.trainer/releases/latest"><img src="https://badgen.net/github/release/schms27/drum.trainer" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <a href="https://ko-fi.com/schms27"><img src="https://img.shields.io/badge/Ko--fi-support%20the%20project-FF5E5B?logo=ko-fi&logoColor=white" alt="Support on Ko-fi"></a>
 </p>
 
 <p align="center">
@@ -303,6 +304,10 @@ docker compose up -d
 ```
 
 To roll back, set `DRUM_TRAINER_VERSION` to the previous version and run the same commands. Migrations only move forward, so roll back across a release that added a migration only if you also restore a database backup.
+
+## Support
+
+Drum Trainer is free and open source. If it helps your practice, you can [buy me a coffee on Ko-fi](https://ko-fi.com/schms27). It's a thank-you, not a support contract: issues and pull requests are welcome either way.
 
 ## License
 
