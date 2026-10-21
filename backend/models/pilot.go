@@ -11,5 +11,6 @@ type PilotTrack struct {
 	FilePath  string    `json:"-"` // not exposed to API clients
 	FileSize  int64     `json:"file_size"`
 	MimeType  string    `json:"mime_type"`
+	Volume    *float64  `json:"volume"` // 0–1; nil = use the kit profile's default
 	CreatedAt time.Time `json:"created_at"`
 }

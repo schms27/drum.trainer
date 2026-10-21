@@ -16,7 +16,7 @@ func ListKitProfiles(db *DB, userID int64) ([]models.KitProfile, error) {
 	}
 
 	rows, err := db.Query(
-		db.Rebind(`SELECT id, name, created_at FROM kit_profiles WHERE user_id = ? ORDER BY id ASC`),
+		db.Rebind(`SELECT id, name, created_at, metronome_volume, pilot_volume FROM kit_profiles WHERE user_id = ? ORDER BY id ASC`),
 		userID,
 	)
 	if err != nil {
@@ -26,7 +26,7 @@ func ListKitProfiles(db *DB, userID int64) ([]models.KitProfile, error) {
 	for rows.Next() {
 		var k models.KitProfile
 		var ct scanTime
-		if err := rows.Scan(&k.ID, &k.Name, &ct); err != nil {
+		if err := rows.Scan(&k.ID, &k.Name, &ct, &k.MetronomeVolume, &k.PilotVolume); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -193,6 +193,19 @@ func SetActiveKitProfile(db *DB, userID int64, id *int64) error {
 	}
 	_, err := db.Exec(db.Rebind(`UPDATE users SET active_kit_profile_id = ? WHERE id = ?`), id, userID)
 	return err
+}
+
+// SetKitMix saves a kit profile's default playback levels (nil clears one).
+func SetKitMix(db *DB, id, userID int64, metronome, pilot *float64) error {
+	res, err := db.Exec(db.Rebind(`UPDATE kit_profiles SET metronome_volume = ?, pilot_volume = ? WHERE id = ? AND user_id = ?`),
+		metronome, pilot, id, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // ActiveKitMapping returns the note→instrument overrides of the user's active

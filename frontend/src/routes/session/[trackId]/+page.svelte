@@ -7,11 +7,14 @@
 	import PadCheck from '$lib/components/recorder/PadCheck.svelte';
 	import CalibrateDialog from '$lib/components/recorder/CalibrateDialog.svelte';
 	import RecordingControls from '$lib/components/recorder/RecordingControls.svelte';
-	import PilotControls from '$lib/components/session/PilotControls.svelte';
+	import MixerControls from '$lib/components/session/MixerControls.svelte';
 	import PlayButton from '$lib/components/PlayButton.svelte';
 	import Metronome from '$lib/components/Metronome.svelte';
 	import { submitSession } from '$lib/api/sessions';
-	import { setPracticeBpm } from '$lib/api/tracks';
+	import { setPracticeBpm, setTrackMix } from '$lib/api/tracks';
+	import { setKitMix } from '$lib/api/kits';
+	import { levelToGain, resolveMix } from '$lib/audio/mix';
+	import { sessionMix } from '$lib/audio/session-mix.svelte';
 	import { pilotAudioUrl } from '$lib/api/pilots';
 	import { PilotPlayer } from '$lib/audio/PilotPlayer';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
@@ -30,6 +33,48 @@
 	// Recorded notes are mapped through the active kit profile (or General MIDI),
 	// matching how the backend scores the take.
 	const hitGroup = (note: number) => kitInstrument(activeKit, note);
+
+	// ── Mixer ───────────────────────────────────────────────────────────────
+	// Levels start from the track's saved mix, else the kit profile's defaults.
+	// svelte-ignore state_referenced_locally
+	Object.assign(sessionMix, resolveMix(track, pilots, activeKit));
+	// svelte-ignore state_referenced_locally
+	let kitDefaults = $state(activeKit ? { metronome_volume: activeKit.metronome_volume, pilot_volume: activeKit.pilot_volume } : null);
+
+	let saveMixTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Saves the mix for this track shortly after the last change. */
+	function handleMixChange() {
+		if (saveMixTimer) clearTimeout(saveMixTimer);
+		saveMixTimer = setTimeout(() => {
+			saveMixTimer = null;
+			setTrackMix(
+				track.id,
+				sessionMix.metronome,
+				pilots.map((p) => ({ id: p.id, volume: sessionMix.pilots[p.id] ?? null }))
+			).catch(() => {
+				// Not saved, but still applied for this visit.
+			});
+		}, 600);
+	}
+
+	async function saveMixAsKitDefault() {
+		if (!activeKit) return;
+		// Backing tracks share one default; with several, use their average.
+		const levels = pilots.map((p) => sessionMix.pilots[p.id] ?? 1);
+		const pilotDefault = levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : (kitDefaults?.pilot_volume ?? null);
+		const saved = await setKitMix(activeKit.id, sessionMix.metronome, pilotDefault);
+		kitDefaults = { metronome_volume: saved.metronome_volume, pilot_volume: saved.pilot_volume };
+	}
+
+	/** Forgets the track's own mix, going back to the kit profile's defaults. */
+	function resetMix() {
+		const levels = resolveMix({ metronome_volume: null }, pilots.map((p) => ({ id: p.id, volume: null })), kitDefaults);
+		sessionMix.metronome = levels.metronome;
+		sessionMix.pilots = levels.pilots;
+		for (const p of pilots) pilotPlayer?.setVolume(p.id, levelToGain(levels.pilots[p.id]));
+		if (saveMixTimer) clearTimeout(saveMixTimer);
+		setTrackMix(track.id, null, pilots.map((p) => ({ id: p.id, volume: null }))).catch(() => {});
+	}
 
 	// ── Backing tracks ("pilots" in the API) ────────────────────────────────
 	let pilotPlayer = $state<PilotPlayer | null>(null);
@@ -63,6 +108,9 @@
 		pilotLoadError = '';
 		try {
 			const player = new PilotPlayer(audioCtx);
+			player.setInitialVolumes(
+				Object.fromEntries(pilots.map((p) => [p.id, levelToGain(sessionMix.pilots[p.id] ?? 1)]))
+			);
 			await player.loadFromBytes(
 				pilots.map((p) => ({ id: p.id, trackId: p.track_id, name: p.name })),
 				pilotRawBuffers
@@ -224,14 +272,23 @@
 	<h1 class="text-xl font-bold text-fg">{track.name} <span class="text-fg-muted font-normal text-base">· {currentBpm} BPM</span></h1>
 {/if}
 
-{#if pilots.length > 0}
-	<Card title="Backing tracks" description="Audio that plays along while you record.">
-		<PilotControls {pilots} player={pilotPlayer} ready={pilotsReady} />
-		{#if pilotLoadError}
-			<div class="mt-3"><Notice variant="error">{pilotLoadError}</Notice></div>
-		{/if}
-	</Card>
-{/if}
+<Card
+	title="Volume"
+	description={pilots.length > 0 ? 'Metronome and backing tracks that play along while you record.' : 'Metronome and count-in.'}
+>
+	<MixerControls
+		{pilots}
+		player={pilotPlayer}
+		ready={pilotsReady}
+		kitName={activeKit?.name ?? null}
+		onChange={handleMixChange}
+		onSaveAsKitDefault={activeKit ? saveMixAsKitDefault : undefined}
+		onResetToKitDefault={resetMix}
+	/>
+	{#if pilotLoadError}
+		<div class="mt-3"><Notice variant="error">{pilotLoadError}</Notice></div>
+	{/if}
+</Card>
 
 <section class="flex flex-col gap-4" aria-labelledby="record-heading">
 	{#if !recordingActive}<h2 id="record-heading" class="text-lg font-semibold text-fg">3. Record</h2>{/if}

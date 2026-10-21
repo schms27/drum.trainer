@@ -12,6 +12,8 @@ export interface MetronomeOptions {
 	startTime?: number;
 	/** Stop automatically after this many clicks (e.g. one bar of count-in). */
 	maxBeats?: number;
+	/** Gain (0–1) for each click, read as it is scheduled so changes apply right away. */
+	gain?: () => number;
 }
 
 export interface Metronome {
@@ -27,12 +29,13 @@ export interface Metronome {
 }
 
 /** Schedule a single click sound at the given AudioContext time. */
-export function playClick(ctx: AudioContext, time: number, accent: boolean): void {
+export function playClick(ctx: AudioContext, time: number, accent: boolean, gain = 1): void {
+	if (gain <= 0) return; // muted
 	const osc = ctx.createOscillator();
 	const env = ctx.createGain();
 	osc.type = 'triangle';
 	osc.frequency.value = accent ? 1200 : 900;
-	env.gain.setValueAtTime(accent ? 0.6 : 0.35, time);
+	env.gain.setValueAtTime((accent ? 0.6 : 0.35) * gain, time);
 	env.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
 	osc.connect(env);
 	env.connect(ctx.destination);
@@ -58,7 +61,7 @@ export function createMetronome(initialBpm: number, options?: MetronomeOptions):
 
 	function scheduleClick(time: number, accent: boolean): void {
 		if (!ctx) return;
-		playClick(ctx, time, accent);
+		playClick(ctx, time, accent, options?.gain?.() ?? 1);
 
 		if (options?.onBeat) {
 			const delayMs = Math.max(0, (time - ctx.currentTime) * 1000);

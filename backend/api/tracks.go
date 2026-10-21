@@ -238,6 +238,51 @@ func (h *tracksHandler) setPracticeBPM(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// validVolume reports whether v is unset or a level between 0 and 1.
+func validVolume(v *float64) bool {
+	return v == nil || (*v >= 0 && *v <= 1)
+}
+
+// PUT /api/v1/tracks/{id}/mix
+// Saves the session page's mixer for this track: the metronome level and the
+// level of each backing track. null clears a level (the kit default applies).
+func (h *tracksHandler) setMix(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var body struct {
+		MetronomeVolume *float64            `json:"metronome_volume"`
+		Pilots          []dbpkg.PilotVolume `json:"pilots"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if !validVolume(body.MetronomeVolume) {
+		writeError(w, http.StatusBadRequest, "volumes must be between 0 and 1")
+		return
+	}
+	for _, p := range body.Pilots {
+		if !validVolume(p.Volume) {
+			writeError(w, http.StatusBadRequest, "volumes must be between 0 and 1")
+			return
+		}
+	}
+
+	user := UserFromContext(r.Context())
+	if err := dbpkg.SetTrackMix(h.db, id, user.ID, body.MetronomeVolume, body.Pilots); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "track not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, "failed to save mix")
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // GET /api/v1/tracks/{id}/mapping
 func (h *tracksHandler) getMapping(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(chi.URLParam(r, "id"))

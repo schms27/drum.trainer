@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Minus, Plus, RotateCcw, Square, Timer } from '@lucide/svelte';
 	import { createMetronome, type Metronome } from '$lib/midi/metronome';
+	import { metronomeGain } from '$lib/audio/session-mix.svelte';
 
 	let {
 		initialBpm = 120,
@@ -60,7 +61,7 @@
 			activeBeat = -1;
 			onMetronomeChange?.(null);
 		} else {
-			metronome = createMetronome(bpm, { onBeat, beatsPerBar });
+			metronome = createMetronome(bpm, { onBeat, beatsPerBar, gain: metronomeGain });
 			metronome.start();
 			playing = true;
 			onMetronomeChange?.(metronome);

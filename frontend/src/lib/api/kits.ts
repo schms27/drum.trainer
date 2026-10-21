@@ -9,6 +9,9 @@ export interface KitProfile {
 	mappings: NoteMapping[];
 	/** The kit used to score recorded hits. */
 	active: boolean;
+	/** Default levels (0–1) for tracks without their own mix; null = full level. */
+	metronome_volume: number | null;
+	pilot_volume: number | null;
 	created_at: string;
 }
 
@@ -23,6 +26,13 @@ export async function createKit(name: string, mappings: NoteMapping[]): Promise<
 
 export async function updateKit(id: number, name: string, mappings: NoteMapping[]): Promise<KitProfile> {
 	return apiFetch<KitProfile>(`/kits/${id}`, { method: 'PUT', body: JSON.stringify({ name, mappings }) });
+}
+
+export async function setKitMix(id: number, metronomeVolume: number | null, pilotVolume: number | null): Promise<KitProfile> {
+	return apiFetch<KitProfile>(`/kits/${id}/mix`, {
+		method: 'PUT',
+		body: JSON.stringify({ metronome_volume: metronomeVolume, pilot_volume: pilotVolume })
+	});
 }
 
 export async function deleteKit(id: number): Promise<void> {

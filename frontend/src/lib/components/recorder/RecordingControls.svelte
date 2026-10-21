@@ -2,6 +2,7 @@
 	import { CircleDot, Square, RotateCcw } from '@lucide/svelte';
 	import { createRecorder, type Recorder } from '$lib/midi/recorder';
 	import { createMetronome, type Metronome } from '$lib/midi/metronome';
+	import { metronomeGain } from '$lib/audio/session-mix.svelte';
 	import { audioTimeToPerfMs } from '$lib/midi/timing';
 	import { practiceSettings, type StartMode } from '$lib/practice-settings.svelte';
 	import { focusMode } from '$lib/focus.svelte';
@@ -151,7 +152,8 @@
 			context: ctx,
 			startTime: firstClick,
 			beatsPerBar: timeSigNumerator,
-			maxBeats: practiceSettings.clickDuringTake ? undefined : timeSigNumerator
+			maxBeats: practiceSettings.clickDuringTake ? undefined : timeSigNumerator,
+			gain: metronomeGain
 		});
 		click.start();
 

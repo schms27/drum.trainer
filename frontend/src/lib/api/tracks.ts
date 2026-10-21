@@ -61,6 +61,18 @@ export async function setPracticeBpm(trackId: number, bpm: number | null): Promi
 	});
 }
 
+/** Saves the session mixer for a track. null clears a level, so the kit default applies. */
+export async function setTrackMix(
+	trackId: number,
+	metronomeVolume: number | null,
+	pilots: { id: number; volume: number | null }[]
+): Promise<void> {
+	await apiFetch(`/tracks/${trackId}/mix`, {
+		method: 'PUT',
+		body: JSON.stringify({ metronome_volume: metronomeVolume, pilots })
+	});
+}
+
 export async function getTrackMapping(trackId: number): Promise<NoteMapping[]> {
 	const data = await apiFetch<{ mappings: NoteMapping[] }>(`/tracks/${trackId}/mapping`);
 	return data.mappings;
