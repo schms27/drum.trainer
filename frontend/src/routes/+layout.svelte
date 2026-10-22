@@ -8,6 +8,11 @@
 	import type { LayoutData } from './$types';
 	import '$lib/theme.svelte';
 	import { focusMode } from '$lib/focus.svelte';
+	import { captureLaunchedFile } from '$lib/pwa/incoming-file';
+
+	// "Open with → Drum Trainer": park the file before any sign-in redirect;
+	// the library page uploads it.
+	captureLaunchedFile();
 
 	const appVersion = import.meta.env.VITE_APP_VERSION ?? 'dev';
 

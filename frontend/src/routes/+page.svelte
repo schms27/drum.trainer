@@ -14,6 +14,7 @@
 		type LibrarySort
 	} from '$lib/library-filter';
 	import MidiUpload from '$lib/components/upload/MidiUpload.svelte';
+	import { INCOMING_EVENT, takeIncomingFile } from '$lib/pwa/incoming-file';
 	import TrackList from '$lib/components/tracks/TrackList.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -76,7 +77,23 @@
 		const { notes: _notes, ...rest } = track;
 		tracks = [rest, ...tracks];
 		showUpload = false;
+		incomingFile = null;
 	}
+
+	// A MIDI file opened with or shared to the installed app (see
+	// $lib/pwa/incoming-file): show the upload card and upload it.
+	let incomingFile = $state<File | null>(null);
+	async function checkIncoming() {
+		const file = await takeIncomingFile().catch(() => null);
+		if (!file) return;
+		incomingFile = file;
+		showUpload = true;
+	}
+	$effect(() => {
+		checkIncoming();
+		window.addEventListener(INCOMING_EVENT, checkIncoming);
+		return () => window.removeEventListener(INCOMING_EVENT, checkIncoming);
+	});
 </script>
 
 <svelte:head><title>Library — Drum Trainer</title></svelte:head>
@@ -106,7 +123,7 @@
 		</Card>
 
 		<Card title="Add your first track">
-			<MidiUpload onUploaded={handleUploaded} />
+			<MidiUpload onUploaded={handleUploaded} file={incomingFile} />
 			<p class="text-sm text-fg-muted mt-4">
 				No MIDI file? <a href="/tracks/new" class="text-accent-text hover:underline">Write a track yourself</a> in the editor.
 			</p>
@@ -124,7 +141,10 @@
 			<Button href="/tracks/new" variant="secondary">
 				<PencilRuler size={16} aria-hidden="true" /> New track
 			</Button>
-			<Button variant={showUpload ? 'secondary' : 'primary'} onclick={() => (showUpload = !showUpload)} aria-expanded={showUpload}>
+			<Button variant={showUpload ? 'secondary' : 'primary'} onclick={() => {
+					showUpload = !showUpload;
+					incomingFile = null;
+				}} aria-expanded={showUpload}>
 				{#if showUpload}
 					Cancel
 				{:else}
@@ -136,7 +156,7 @@
 
 	{#if showUpload}
 		<Card title="Add a track" description="Upload a MIDI file (.mid) with the drum part you want to practise.">
-			<MidiUpload onUploaded={handleUploaded} />
+			<MidiUpload onUploaded={handleUploaded} file={incomingFile} />
 		</Card>
 	{/if}
 
