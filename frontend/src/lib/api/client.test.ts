@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { apiFetch, ApiError } from '$lib/api/client';
+import { apiFetch, ApiError, isNetworkError, NETWORK_ERROR_STATUS, OFFLINE_MESSAGE } from '$lib/api/client';
 
 describe('apiFetch', () => {
 	beforeEach(() => {
@@ -92,6 +92,28 @@ describe('apiFetch', () => {
 		expect(err).toBeInstanceOf(ApiError);
 		expect(err.status).toBe(503);
 		expect(err.message).toBe('HTTP 503');
+	});
+
+	it('turns a network failure into an offline ApiError', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+		const err = (await apiFetch('/test').catch((e) => e)) as ApiError;
+		expect(err).toBeInstanceOf(ApiError);
+		expect(err.status).toBe(NETWORK_ERROR_STATUS);
+		expect(err.message).toBe(OFFLINE_MESSAGE);
+		expect(isNetworkError(err)).toBe(true);
+	});
+
+	it('passes an aborted request on unchanged', async () => {
+		const abort = new DOMException('aborted', 'AbortError');
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort));
+
+		expect(await apiFetch('/test').catch((e) => e)).toBe(abort);
+	});
+
+	it('only counts status 0 as a network error', () => {
+		expect(isNetworkError(new ApiError(500, 'x'))).toBe(false);
+		expect(isNetworkError(new TypeError('Failed to fetch'))).toBe(false);
 	});
 
 	it('merges caller-supplied headers with the default Content-Type', async () => {
