@@ -4,7 +4,11 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Title bar colour of the installed app; matches the header (--panel)
+		     and is updated with the theme. -->
+		<meta name="theme-color" content="#ffffff" />
 		<meta name="description" content="Practice drumming with MIDI tracks and get scored on timing accuracy." />
 		<title>Drum Trainer</title>
 		<style>
@@ -21,6 +25,7 @@
 				try { pref = localStorage.getItem('drum-trainer:theme'); } catch (e) {}
 				var dark = pref === 'dark' || (pref !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
 				document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+				document.querySelector('meta[name="theme-color"]').content = dark ? '#18181b' : '#ffffff';
 			})();
 		</script>
 		%sveltekit.head%

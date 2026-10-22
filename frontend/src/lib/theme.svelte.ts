@@ -31,8 +31,14 @@ function resolved(): 'light' | 'dark' {
 	return preference;
 }
 
+// Header (--panel) colour per theme, used as the installed app's title bar colour.
+const THEME_COLOR = { light: '#ffffff', dark: '#18181b' } as const;
+
 function apply() {
-	if (typeof document !== 'undefined') document.documentElement.dataset.theme = resolved();
+	if (typeof document === 'undefined') return;
+	const t = resolved();
+	document.documentElement.dataset.theme = t;
+	document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[t]);
 }
 
 export const theme = {
