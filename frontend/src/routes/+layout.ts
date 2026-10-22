@@ -6,21 +6,25 @@ export const ssr = false;
 import { redirect } from '@sveltejs/kit';
 import type { LayoutLoad } from './$types';
 import { fetchCurrentUser } from '$lib/api/auth';
-import { ApiError } from '$lib/api/client';
+import { ApiError, isNetworkError } from '$lib/api/client';
 
 export const load: LayoutLoad = async ({ url }) => {
 	// The login page is public — skip the auth check to avoid an infinite redirect.
 	if (url.pathname === '/login') {
-		return { user: null };
+		return { user: null, offline: false };
 	}
 
 	try {
 		const user = await fetchCurrentUser();
-		return { user };
+		return { user, offline: false };
 	} catch (e) {
+		// No connection: we don't know who is signed in, so don't send them to
+		// /login. The page's own load fails the same way and +error.svelte
+		// explains it.
+		if (isNetworkError(e)) return { user: null, offline: true };
 		if (e instanceof ApiError && e.status === 401) {
 			// Share links and the terms page work without an account.
-			if (isPublicPath(url.pathname)) return { user: null };
+			if (isPublicPath(url.pathname)) return { user: null, offline: false };
 			throw redirect(303, '/login');
 		}
 		throw e;

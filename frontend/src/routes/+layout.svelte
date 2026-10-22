@@ -4,6 +4,7 @@
 	import type { Snippet } from 'svelte';
 	import Header from '$lib/components/layout/Header.svelte';
 	import UpdateNotice from '$lib/components/layout/UpdateNotice.svelte';
+	import OfflineBanner from '$lib/components/layout/OfflineBanner.svelte';
 	import { navigating, page } from '$app/state';
 	import type { LayoutData } from './$types';
 	import '$lib/theme.svelte';
@@ -18,6 +19,8 @@
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 </script>
+
+<OfflineBanner />
 
 {#if data.user}
 	{#if navigating.to}
@@ -41,15 +44,16 @@
 {:else if page.url.pathname === '/login'}
 	{@render children()}
 {:else}
-	<!-- Signed-out shell for public pages (share links, terms). -->
+	<!-- Signed-out shell for public pages (share links, terms), and the shell
+	     while offline, when it isn't known who is signed in. -->
 	<div class="min-h-screen bg-canvas text-fg flex flex-col">
 		<header class="border-b border-line">
 			<div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-				<a href="/login" class="flex items-center gap-2">
+				<a href={data.offline ? '/' : '/login'} class="flex items-center gap-2">
 					<img src="/logo.svg" alt="" width="28" height="28" />
 					<span class="font-brand text-lg font-bold tracking-tight">Drum Trainer</span>
 				</a>
-				<div class="flex items-center gap-5">
+				<div class="flex items-center gap-5" class:hidden={data.offline}>
 					<a href="/explore" class="text-sm text-fg-muted hover:text-fg">Explore</a>
 					<a href="/login?next={encodeURIComponent(page.url.pathname + page.url.search)}" class="text-sm font-medium text-accent-text hover:underline">Sign in</a>
 				</div>

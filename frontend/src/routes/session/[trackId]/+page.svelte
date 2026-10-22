@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Gauge } from '@lucide/svelte';
+	import { Gauge, RotateCcw } from '@lucide/svelte';
 	import MidiDeviceSelector from '$lib/components/recorder/MidiDeviceSelector.svelte';
 	import PadCheck from '$lib/components/recorder/PadCheck.svelte';
 	import CalibrateDialog from '$lib/components/recorder/CalibrateDialog.svelte';
@@ -197,28 +197,46 @@
 		track.notes.some((n) => n.instrument === i)
 	);
 
+	// A finished take that could not be saved (e.g. offline). Kept so it can be
+	// sent again instead of being lost.
+	let unsavedTake = $state<Parameters<typeof submitSession>[0] | null>(null);
+
 	async function handleFinished(hits: RecordedHit[], startedAt: string, endedAt: string) {
 		// Normalize hit times from practice-tempo space back to original-tempo space
 		// so the scorer compares against the unscaled MIDI target times.
 		const timeScale = track.bpm / currentBpm;
 		const scoringHits =
 			timeScale === 1 ? hits : hits.map((h) => ({ ...h, time_ms: h.time_ms / timeScale }));
+		await saveTake({
+			track_id: track.id,
+			started_at: startedAt,
+			ended_at: endedAt,
+			hits: scoringHits,
+			practice_bpm: currentBpm
+		});
+	}
+
+	async function saveTake(take: Parameters<typeof submitSession>[0]) {
 		submitting = true;
 		submitError = '';
 		try {
-			const result = await submitSession({
-				track_id: track.id,
-				started_at: startedAt,
-				ended_at: endedAt,
-				hits: scoringHits,
-				practice_bpm: currentBpm
-			});
+			const result = await submitSession(take);
+			unsavedTake = null;
 			goto(`/results/${result.session.id}`);
 		} catch (e: unknown) {
 			submitError = e instanceof Error ? e.message : 'Failed to submit session';
+			unsavedTake = take;
 			submitting = false;
 		}
 	}
+
+	beforeNavigate(({ cancel, type }) => {
+		if (!unsavedTake) return;
+		const message = 'Your last take has not been saved yet. Leave and lose it?';
+		// A page unload shows the browser's own prompt; in-app links ask here.
+		if (type === 'leave') cancel();
+		else if (!confirm(message)) cancel();
+	});
 </script>
 
 <svelte:head><title>{track.name} — Drum Trainer</title></svelte:head>
@@ -294,7 +312,17 @@
 <section class="flex flex-col gap-4" aria-labelledby="record-heading">
 	{#if !recordingActive}<h2 id="record-heading" class="text-lg font-semibold text-fg">3. Record</h2>{/if}
 	{#if submitError}
-		<Notice variant="error">Your take could not be saved: {submitError}</Notice>
+		<Notice variant="error">
+			Your take could not be saved: {submitError}
+			{#if unsavedTake}
+				<div class="mt-2 flex flex-wrap items-center gap-2">
+					<Button size="sm" onclick={() => unsavedTake && saveTake(unsavedTake)}>
+						<RotateCcw size={14} aria-hidden="true" /> Try again
+					</Button>
+					<Button size="sm" variant="ghost" onclick={() => ((unsavedTake = null), (submitError = ''))}>Discard take</Button>
+				</div>
+			{/if}
+		</Notice>
 	{/if}
 	{#if submitting}
 		<div class="bg-card border border-line rounded-xl p-5 text-sm text-fg-muted" role="status">Scoring your take…</div>
