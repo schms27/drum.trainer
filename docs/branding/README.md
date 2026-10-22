@@ -10,6 +10,9 @@ indigo, like the app's metronome. Drawn in VectorCraft.
 | `frontend/static/logo.svg` | Header, login page (256×256, rounded badge) |
 | `frontend/static/favicon.svg` | Browser tab — bolder sticks, no beat lights, so it stays legible at 16 px |
 | `frontend/static/apple-touch-icon.png` | iOS home screen (180×180, square — iOS rounds the corners itself) |
+| `frontend/static/icons/icon-192.png`, `icon-512.png` | PWA install icons — `logo.svg` rendered at 192 and 512 px |
+| `frontend/static/icons/icon-maskable-512.png` | PWA maskable icon (Android adaptive icons) — rendered from `docs/branding/icon-maskable.svg` |
+| `docs/branding/icon-maskable.svg` | Logo artwork scaled to 85 % on a full-bleed `#3a3a42` square, so it stays inside the maskable safe zone (centre circle, 40 % radius) |
 | `docs/branding/logo-source.vectorcraft` | Editable source with all artboards (including the earlier drafts) |
 | `docs/branding/stick.py` | Generates the drumstick outlines (butt, shaft, taper, neck, acorn tip) as SVG path data |
 
