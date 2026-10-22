@@ -3,6 +3,7 @@
 	import '@fontsource/outfit/700.css';
 	import type { Snippet } from 'svelte';
 	import Header from '$lib/components/layout/Header.svelte';
+	import UpdateNotice from '$lib/components/layout/UpdateNotice.svelte';
 	import { navigating, page } from '$app/state';
 	import type { LayoutData } from './$types';
 	import '$lib/theme.svelte';
@@ -57,6 +58,8 @@
 		</footer>
 	</div>
 {/if}
+
+<UpdateNotice />
 
 <style>
 	.nav-loading-track {

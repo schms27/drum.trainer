@@ -9,6 +9,9 @@ const config = {
 		// static files. Every unknown path falls back to index.html, where the
 		// client-side router takes over.
 		adapter: adapter({ pages: 'build', assets: 'build', fallback: 'index.html' }),
+		// Check for a new deployment every 5 minutes. `updated` then shows the
+		// reload notice, and the next link click does a full page load.
+		version: { pollInterval: 5 * 60 * 1000 },
 		alias: {
 			$lib: './src/lib'
 		}
