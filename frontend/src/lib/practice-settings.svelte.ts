@@ -6,6 +6,8 @@ interface Stored {
 	startMode: StartMode;
 	clickDuringTake: boolean;
 	autoStop: boolean;
+	/** Keep the display awake while the practice page is open. */
+	keepScreenOn: boolean;
 	/** Measured input latency (ms) per MIDI device id. */
 	latency: Record<string, number>;
 }
@@ -16,6 +18,7 @@ const defaults: Stored = {
 	startMode: 'count-in',
 	clickDuringTake: true,
 	autoStop: true,
+	keepScreenOn: true,
 	latency: {}
 };
 
@@ -28,6 +31,7 @@ function load(): Stored {
 				startMode: parsed.startMode === 'first-hit' ? 'first-hit' : 'count-in',
 				clickDuringTake: parsed.clickDuringTake ?? defaults.clickDuringTake,
 				autoStop: parsed.autoStop ?? defaults.autoStop,
+				keepScreenOn: parsed.keepScreenOn ?? defaults.keepScreenOn,
 				latency: typeof parsed.latency === 'object' && parsed.latency ? parsed.latency : {}
 			};
 		}
@@ -67,6 +71,13 @@ export const practiceSettings = {
 	},
 	set autoStop(v: boolean) {
 		state.autoStop = v;
+		save();
+	},
+	get keepScreenOn() {
+		return state.keepScreenOn;
+	},
+	set keepScreenOn(v: boolean) {
+		state.keepScreenOn = v;
 		save();
 	},
 	/** Measured latency for a device, or null if it has not been calibrated. */
