@@ -6,6 +6,7 @@
 	import { audioTimeToPerfMs } from '$lib/midi/timing';
 	import { practiceSettings, type StartMode } from '$lib/practice-settings.svelte';
 	import { focusMode } from '$lib/focus.svelte';
+	import { holdScreenWakeLock } from '$lib/wake-lock';
 	import type { RecordedHit } from '$lib/types/session';
 	import type { NoteEvent } from '$lib/types/track';
 	import LiveEventFeed from './LiveEventFeed.svelte';
@@ -85,6 +86,12 @@
 	$effect(() => {
 		active = recorderState !== 'idle' && recorderState !== 'stopping';
 		focusMode.active = active;
+	});
+
+	// Keep the display awake on the practice page, between takes too: nobody
+	// touches the screen while drumming.
+	$effect(() => {
+		if (practiceSettings.keepScreenOn) return holdScreenWakeLock();
 	});
 
 	// Leaving the page mid-take must not leave the app in focus mode or the
@@ -312,6 +319,15 @@
 							onchange={(e) => (practiceSettings.autoStop = e.currentTarget.checked)}
 						/>
 						Stop automatically at the end of the track
+					</label>
+					<label class="flex items-center gap-2 text-sm text-fg cursor-pointer w-fit">
+						<input
+							type="checkbox"
+							class="w-4 h-4 accent-[var(--accent)]"
+							checked={practiceSettings.keepScreenOn}
+							onchange={(e) => (practiceSettings.keepScreenOn = e.currentTarget.checked)}
+						/>
+						Keep the screen on while practising
 					</label>
 					{#if practiceSettings.startMode === 'count-in' && deviceId && latency === null}
 						<p class="text-xs text-fg-subtle">
