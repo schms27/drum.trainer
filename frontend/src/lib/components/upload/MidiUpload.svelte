@@ -1,10 +1,19 @@
 <script lang="ts">
-	import { Upload } from '@lucide/svelte';
+	import { untrack } from 'svelte';
+	import { RotateCcw, Upload } from '@lucide/svelte';
 	import { uploadTrack } from '$lib/api/tracks';
 	import type { TrackWithNotes } from '$lib/types/track';
+	import Button from '$lib/components/ui/Button.svelte';
 	import Notice from '$lib/components/ui/Notice.svelte';
 
-	let { onUploaded }: { onUploaded: (track: TrackWithNotes) => void } = $props();
+	let {
+		onUploaded,
+		file: incoming = null
+	}: {
+		onUploaded: (track: TrackWithNotes) => void;
+		/** A file handed to the app (opened or shared from the OS); uploaded right away. */
+		file?: File | null;
+	} = $props();
 
 	let dragging = $state(false);
 	let uploading = $state(false);
@@ -12,13 +21,22 @@
 	let error = $state('');
 	// 'auto' lets the server find the drum part (channel 10 in most files).
 	let channel = $state<number | 'auto'>('auto');
+	// Kept after a failed upload so it can be retried, e.g. with another channel.
+	let failedFile = $state<File | null>(null);
+
+	$effect(() => {
+		if (incoming) untrack(() => handleFile(incoming));
+	});
 
 	async function handleFile(file: File) {
-		if (!/\.midi?$/i.test(file.name)) {
+		// Shared files may come without a proper name, so the type counts too.
+		if (!/\.midi?$/i.test(file.name) && !/^audio\/(x-)?midi$/.test(file.type)) {
 			error = 'That is not a MIDI file. Choose a file ending in .mid or .midi.';
+			failedFile = null;
 			return;
 		}
 		error = '';
+		failedFile = null;
 		uploading = true;
 		progress = 0;
 		try {
@@ -26,6 +44,7 @@
 			onUploaded(track);
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : 'Upload failed';
+			failedFile = file;
 		} finally {
 			uploading = false;
 		}
@@ -71,7 +90,17 @@
 	</label>
 
 	{#if error}
-		<Notice variant="error">{error}</Notice>
+		<Notice variant="error">
+			{#if failedFile}<span class="font-medium">{failedFile.name}:</span>{/if}
+			{error}
+		</Notice>
+	{/if}
+	{#if failedFile && !uploading}
+		<div>
+			<Button size="sm" onclick={() => failedFile && handleFile(failedFile)}>
+				<RotateCcw size={14} aria-hidden="true" /> Try again
+			</Button>
+		</div>
 	{/if}
 
 	<details class="text-sm text-fg-muted">

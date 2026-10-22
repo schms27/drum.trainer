@@ -9,6 +9,7 @@
 
 import { build, files, version } from '$service-worker';
 import { routeRequest } from '$lib/pwa/sw-routing';
+import { stashIncomingFile } from '$lib/pwa/incoming-file';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -34,8 +35,9 @@ sw.addEventListener('install', (event) => {
 sw.addEventListener('activate', (event) => {
 	event.waitUntil(
 		(async () => {
+			// Only old app-shell caches; a shared file waiting in `incoming-files` stays.
 			for (const key of await caches.keys()) {
-				if (key !== CACHE) await caches.delete(key);
+				if (key.startsWith('shell-') && key !== CACHE) await caches.delete(key);
 			}
 			await sw.clients.claim();
 		})()
@@ -52,8 +54,21 @@ sw.addEventListener('fetch', (event) => {
 		staticFiles
 	});
 	if (strategy === 'passthrough') return;
-	event.respondWith(strategy === 'cache-first' ? cacheFirst(request) : networkFirst(request));
+	if (strategy === 'share-target') event.respondWith(receiveSharedFile(request));
+	else event.respondWith(strategy === 'cache-first' ? cacheFirst(request) : networkFirst(request));
 });
+
+// Android "Share → Drum Trainer": park the file and open the library, which
+// uploads it (after sign-in, if needed).
+async function receiveSharedFile(request: Request): Promise<Response> {
+	try {
+		const file = (await request.formData()).get('file');
+		if (file instanceof File) await stashIncomingFile(file);
+	} catch {
+		// Malformed share — just open the app.
+	}
+	return Response.redirect(new URL('/', sw.location.origin).href, 303);
+}
 
 async function cacheFirst(request: Request): Promise<Response> {
 	const cache = await caches.open(CACHE);

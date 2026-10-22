@@ -50,6 +50,12 @@ describe('routeRequest', () => {
 		expect(route('/', { method: 'POST', mode: 'navigate' })).toBe('passthrough');
 	});
 
+	it('receives files shared to the app', () => {
+		expect(route('/share-target', { method: 'POST', mode: 'navigate' })).toBe('share-target');
+		expect(route('/share-target', { mode: 'navigate' })).toBe('network-first');
+		expect(route('/share-target', { method: 'POST', origin: 'https://evil.example' })).toBe('passthrough');
+	});
+
 	it('never touches other origins', () => {
 		expect(route('/_app/immutable/x.js', { origin: 'https://cdn.example' })).toBe('passthrough');
 		expect(route('/', { origin: 'https://accounts.google.com', mode: 'navigate' })).toBe('passthrough');
