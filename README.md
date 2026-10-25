@@ -92,10 +92,24 @@ It runs in the browser, needs no install for players, and you can host it yourse
 - Light and dark theme (follows your system, or choose one)
 - Sign in with Google or GitHub
 - Runs on PostgreSQL or zero-config SQLite; database migrations run automatically on startup
+- Installable as an app (see below); keeps the screen on while you practise
 
 ## Browser Requirements
 
 The recording feature requires the [Web MIDI API](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API), which is currently supported in Chromium-based browsers (Chrome, Edge, Opera). Firefox and Safari do not support Web MIDI.
+
+### Install as an app
+
+Drum Trainer is a Progressive Web App, so it works in a normal browser tab and can also be installed. Installing gives it its own window and icon, and on a tablet next to the kit it runs full screen without the address bar.
+
+- **Chrome / Edge on desktop:** the install icon in the address bar, or menu → *Install Drum Trainer*.
+- **Chrome on Android:** menu → *Add to home screen* / *Install app*. Connect the e-drum kit with a USB-OTG adapter.
+
+The installed app also opens MIDI files: on desktop, *Open with → Drum Trainer* (or double-click a `.mid` file); on Android, *Share → Drum Trainer*. The file is uploaded to your library.
+
+The app itself is cached, so it starts quickly and shows a clear message when there is no connection. Signing in, the library and saving takes still need the server. When a new version is deployed, an open app offers to reload.
+
+Installing needs HTTPS (or `localhost`), which Web MIDI requires anyway.
 
 ---
 
