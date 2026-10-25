@@ -132,6 +132,7 @@
 					recordingStartWallMs = Date.now() - firstHitTimeMs;
 					recorderState = 'recording';
 					onFirstHit?.(audioCtx!.currentTime);
+					if (practiceSettings.clickDuringTake) startClickAfterFirstHit(audioCtx!, audioCtx!.currentTime);
 				}
 			});
 		} catch (e: unknown) {
@@ -171,6 +172,26 @@
 		countdown = timeSigNumerator;
 		recorderState = 'counting';
 		onCountIn?.(trackStart);
+	}
+
+	/**
+	 * First-note mode: the first hit is the first target note, so the track's
+	 * beat 1 was `firstHitTimeMs` before it. The click joins on the next beat of
+	 * that grid that can still be scheduled.
+	 */
+	function startClickAfterFirstHit(ctx: AudioContext, hitTime: number) {
+		const beatS = 60 / practiceBpm;
+		const trackStart = hitTime - firstHitTimeMs / 1000;
+		const beat = Math.ceil((ctx.currentTime + 0.05 - trackStart) / beatS);
+
+		click = createMetronome(practiceBpm, {
+			context: ctx,
+			startTime: trackStart + beat * beatS,
+			beatsPerBar: timeSigNumerator,
+			firstBeat: ((beat % timeSigNumerator) + timeSigNumerator) % timeSigNumerator,
+			gain: metronomeGain
+		});
+		click.start();
 	}
 
 	/**
@@ -300,17 +321,15 @@
 							{/each}
 						</div>
 					</div>
-					{#if practiceSettings.startMode === 'count-in'}
-						<label class="flex items-center gap-2 text-sm text-fg cursor-pointer w-fit">
-							<input
-								type="checkbox"
-								class="w-4 h-4 accent-[var(--accent)]"
-								checked={practiceSettings.clickDuringTake}
-								onchange={(e) => (practiceSettings.clickDuringTake = e.currentTarget.checked)}
-							/>
-							Keep the metronome clicking during the take
-						</label>
-					{/if}
+					<label class="flex items-center gap-2 text-sm text-fg cursor-pointer w-fit">
+						<input
+							type="checkbox"
+							class="w-4 h-4 accent-[var(--accent)]"
+							checked={practiceSettings.clickDuringTake}
+							onchange={(e) => (practiceSettings.clickDuringTake = e.currentTarget.checked)}
+						/>
+						Keep the metronome clicking during the take
+					</label>
 					<label class="flex items-center gap-2 text-sm text-fg cursor-pointer w-fit">
 						<input
 							type="checkbox"
