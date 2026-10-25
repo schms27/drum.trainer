@@ -10,6 +10,8 @@ export interface MetronomeOptions {
 	context?: AudioContext;
 	/** AudioContext time of the first click (default: just after start()). */
 	startTime?: number;
+	/** Bar position of the first click, 0-based (default 0, the accented beat 1). */
+	firstBeat?: number;
 	/** Stop automatically after this many clicks (e.g. one bar of count-in). */
 	maxBeats?: number;
 	/** Gain (0–1) for each click, read as it is scheduled so changes apply right away. */
@@ -46,6 +48,7 @@ export function playClick(ctx: AudioContext, time: number, accent: boolean, gain
 export function createMetronome(initialBpm: number, options?: MetronomeOptions): Metronome {
 	const beatsPerBar = options?.beatsPerBar ?? 4;
 	const ownsContext = !options?.context;
+	const firstBeat = options?.firstBeat ?? 0;
 
 	let ctx: AudioContext | null = null;
 	let bpm = initialBpm;
@@ -82,7 +85,7 @@ export function createMetronome(initialBpm: number, options?: MetronomeOptions):
 	function runScheduler(): void {
 		if (!ctx) return;
 		while (nextBeatTime < ctx.currentTime + SCHEDULE_AHEAD_S) {
-			if (options?.maxBeats !== undefined && beatIndex >= options.maxBeats) {
+			if (options?.maxBeats !== undefined && beatIndex - firstBeat >= options.maxBeats) {
 				stop();
 				return;
 			}
@@ -101,7 +104,7 @@ export function createMetronome(initialBpm: number, options?: MetronomeOptions):
 		start() {
 			if (ctx) return;
 			ctx = options?.context ?? new AudioContext();
-			beatIndex = 0;
+			beatIndex = firstBeat;
 			nextBeatTime = options?.startTime ?? ctx.currentTime + 0.05;
 			runScheduler();
 		},
