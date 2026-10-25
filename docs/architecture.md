@@ -279,6 +279,25 @@ On transition to `stopped`: call `stopRecording()` → `submitSession()` → nav
 
 ---
 
+## Progressive Web App
+
+The SPA is installable and works in a tab as before; nothing here changes the API.
+
+| Piece | Where | What it does |
+|---|---|---|
+| Manifest + icons | `frontend/static/manifest.webmanifest`, `static/icons/` | Standalone display, icons (incl. maskable), shortcuts, `file_handlers` for `.mid`, `share_target` |
+| Service worker | `frontend/src/service-worker.ts`, routing in `$lib/pwa/sw-routing.ts` | Precaches the build; `/_app/immutable/` and static files cache-first; navigations network-first with the cached shell as offline fallback; **`/api` and non-GET requests are never touched** (OAuth, uploads, audio) |
+| Updates | `kit.version.pollInterval` in `svelte.config.js`, `UpdateNotice.svelte` | Polls `/_app/version.json` every 5 min and offers "Reload" (hidden during a take) |
+| Incoming files | `$lib/pwa/incoming-file.ts` | Desktop `launchQueue` (root layout) and Android shares (service worker, `POST /share-target`) park the file in the `incoming-files` cache; the library page uploads it, also after a sign-in redirect |
+| Offline | `apiFetch` (status 0 `ApiError`), `+layout.ts`, `hooks.client.ts`, `+error.svelte`, `OfflineBanner.svelte` | No redirect to `/login` when offline; an offline page with Try again; unsaved takes are kept on the session page |
+| Screen | `$lib/wake-lock.ts` | Screen Wake Lock while the practice page is open (setting in the recording options) |
+
+nginx (`frontend/nginx.conf`) serves the manifest as `application/manifest+json`, never caches `service-worker.js` or `index.html`, and redirects a `POST /share-target` that reaches it (no service worker yet) to `/`.
+
+Service-worker behaviour only shows in a production build: test with `npm run build && npm run preview`, not `npm run dev`.
+
+---
+
 ## Development Workflow
 
 ### Prerequisites
